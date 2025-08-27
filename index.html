@@ -87,12 +87,13 @@ button:hover { background:#62d3c0;}
 </div>
 
 <script>
-const scriptURL = "https://script.google.com/macros/s/AKfycbx3HUQsI1kMjnWx8rtfb6c4ih9_1f1hEcAm37uc4gVEsmD65wrzrHikDGPtgaabCQ1OJw/exec";const tipoReporte = document.getElementById("tipoReporte");
+const scriptURL = "https://script.google.com/macros/s/AKfycbx3HUQsI1kMjnWx8rtfb6c4ih9_1f1hEcAm37uc4gVEsmD65wrzrHikDGPtgaabCQ1OJw/exec"; // Reemplaza con tu URL de Google Apps Script
+const tipoReporte = document.getElementById("tipoReporte");
 const formGDP = document.getElementById("formGDP");
 const formScrap = document.getElementById("formScrap");
 
-// Mostrar formulario
-tipoReporte.addEventListener("change", ()=>{
+// Mostrar formulario según tipo de reporte
+tipoReporte.addEventListener("change", () => {
   formGDP.classList.add("hidden");
   formScrap.classList.add("hidden");
   if(tipoReporte.value==="GDP") formGDP.classList.remove("hidden");
@@ -115,45 +116,49 @@ document.getElementById("codigo").addEventListener("input",function(){
 
 formGDP.addEventListener("submit", e=>{
   e.preventDefault();
-  const data={
+  const entradaValue = entradaInput.value || "0";
+  const salidaValue = salidaInput.value || "0";
+  if(entradaValue==="0" && salidaValue==="0"){ alert("Debes ingresar entrada o salida"); return; }
+
+  const data = {
     tipoReporte:"GDP",
     usuario:document.getElementById("usuario").value,
     codigo:document.getElementById("codigo").value,
     descripcion:document.getElementById("descripcion").value,
-    entrada:entradaInput.value||"0",
-    salida:salidaInput.value||"0",
+    entrada:entradaValue,
+    salida:salidaValue,
     estanteria:document.getElementById("rack").value,
     linea:document.getElementById("box").value,
     observaciones:document.getElementById("observaciones").value
   };
-  fetch(scriptURL,{method:"POST",body:JSON.stringify(data),headers:{"Content-Type":"application/json"}})
-  .then(res=>res.json())
-  .then(r=>alert("Datos GDP enviados"))
+
+  fetch(scriptURL, { method:"POST", body:JSON.stringify(data), headers:{"Content-Type":"application/json"} })
+  .then(()=>{ alert("Datos GDP enviados"); formGDP.reset(); entradaInput.disabled=false; salidaInput.disabled=false; })
   .catch(err=>alert("Error al enviar: "+err.message));
 });
 
 // Scrap con Excel
 let maestro = {};
 document.getElementById("archivoExcel").addEventListener("change", e=>{
-  const file=e.target.files[0];
-  const reader=new FileReader();
-  reader.onload=function(ev){
-    const data=new Uint8Array(ev.target.result);
-    const workbook=XLSX.read(data,{type:"array"});
-    const sheetName=workbook.SheetNames[0];
-    const sheet=XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+  const file = e.target.files[0];
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const data = new Uint8Array(ev.target.result);
+    const workbook = XLSX.read(data,{type:"array"});
+    const sheetName = workbook.SheetNames[0];
+    const sheet = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-    maestro={};
-    sheet.forEach(r=>{
+    maestro = {};
+    sheet.forEach(r => {
       const m=r["Modelo"], p=r["Pieza"];
-      if(m && p){ if(!maestro[m]) maestro[m]=[]; if(!maestro[m].includes(p)) maestro[m].push(p);}
+      if(m && p){ if(!maestro[m]) maestro[m]=[]; if(!maestro[m].includes(p)) maestro[m].push(p); }
     });
 
-    const modeloSelect=document.getElementById("modelo");
-    modeloSelect.innerHTML="<option value=''>Seleccionar modelo</option>";
-    Object.keys(maestro).forEach(m=>{
-      const opt=document.createElement("option");
-      opt.value=m; opt.textContent=m; modeloSelect.appendChild(opt);
+    const modeloSelect = document.getElementById("modelo");
+    modeloSelect.innerHTML = "<option value=''>Seleccionar modelo</option>";
+    Object.keys(maestro).forEach(m => { 
+      const opt = document.createElement("option");
+      opt.value = m; opt.textContent = m; modeloSelect.appendChild(opt);
     });
     document.getElementById("pieza").innerHTML="<option value=''>Seleccionar pieza</option>";
   };
@@ -161,19 +166,19 @@ document.getElementById("archivoExcel").addEventListener("change", e=>{
 });
 
 document.getElementById("modelo").addEventListener("change", function(){
-  const piezaSelect=document.getElementById("pieza");
+  const piezaSelect = document.getElementById("pieza");
   piezaSelect.innerHTML="<option value=''>Seleccionar pieza</option>";
   if(maestro[this.value]){
-    maestro[this.value].forEach(p=>{
-      const opt=document.createElement("option");
-      opt.value=p; opt.textContent=p; piezaSelect.appendChild(opt);
+    maestro[this.value].forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p; opt.textContent = p; piezaSelect.appendChild(opt);
     });
   }
 });
 
 formScrap.addEventListener("submit", e=>{
   e.preventDefault();
-  const data={
+  const data = {
     tipoReporte:"Scrap",
     fecha:document.getElementById("fecha").value,
     responsable:document.getElementById("responsable").value,
@@ -184,12 +189,10 @@ formScrap.addEventListener("submit", e=>{
     sector:document.getElementById("sector").value,
     caja:document.getElementById("caja").value
   };
-  fetch(scriptURL,{method:"POST",body:JSON.stringify(data),headers:{"Content-Type":"application/json"}})
-  .then(res=>res.json())
-  .then(r=>alert("Scrap enviado"))
+  fetch(scriptURL, { method:"POST", body:JSON.stringify(data), headers:{"Content-Type":"application/json"} })
+  .then(()=>{ alert("Scrap enviado"); formScrap.reset(); })
   .catch(err=>alert("Error al enviar: "+err.message));
 });
 </script>
 </body>
 </html>
-
