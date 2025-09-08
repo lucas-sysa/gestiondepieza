@@ -1,198 +1,181 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Gestión de Piezas</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>
-body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #74ebd5, #ACB6E5); display:flex; height:100vh; align-items:center; justify-content:center;}
-.form-container { background:#fff; padding:30px 40px; border-radius:15px; box-shadow:0 8px 20px rgba(0,0,0,0.15); width:100%; max-width:550px;}
-h2 { text-align:center; margin-bottom:20px; color:#333;}
-input, select { width:100%; padding:10px 12px; margin-bottom:15px; border:1px solid #ccc; border-radius:8px;}
-button { width:50%; background:#74ebd5; border:none; color:#fff; padding:12px; border-radius:10px; font-size:16px; cursor:pointer; display:block; margin:0 auto;}
-button:hover { background:#62d3c0;}
-.hidden { display:none; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gestión de Piezas</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #74ebd5, #ACB6E5);
+      display: flex;
+      height: 100vh;
+      align-items: center;
+      justify-content: center;
+    }
+    .form-container {
+      background: #fff;
+      padding: 30px 40px;
+      border-radius: 15px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+      width: 100%;
+      max-width: 400px;
+    }
+    .form-container h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #333;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      transition: border-color 0.3s;
+    }
+    input:focus, select:focus {
+      border-color: #74ebd5;
+      outline: none;
+    }
+    button {
+      width: 50%;
+      background: #74ebd5;
+      border: none;
+      color: #fff;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+      display: block;
+      margin: 0 auto;
+    }
+    button:hover {
+      background: #62d3c0;
+    }
+  </style>
 </head>
 <body>
-<div class="form-container">
-<h2>Gestión de Piezas</h2>
+  <div class="form-container">
+    <h2>Gestión de Piezas</h2>
+    <form id="form">
+      <input placeholder="Escanear tarjeta del operador" id="usuario" required autofocus />
+      <input placeholder="Código" id="codigo" required />
+      <input placeholder="Descripción" id="descripcion" required readonly />
+      <input type="number" placeholder="Entrada de stock" id="entrada" />
+      <input type="number" placeholder="Salida de stock" id="salida" />
+      <input placeholder="Estantería" id="rack" required />
+      
+      <select id="box" required>
+        <option value="">Seleccionar línea</option>
+        <option>Pañol</option>
+        <option>L21</option>
+        <option>L14</option>
+        <option>L12</option>
+        <option>L09</option>
+        <option>L06</option>
+        <option>Reparaciones</option>
+        <option>Pintura</option>
+      </select>
 
-<select id="tipoReporte" required>
-  <option value="">Seleccionar tipo de reporte</option>
-  <option value="GDP">Control de stock GDP</option>
-  <option value="Scrap">Reporte de Scrap</option>
-</select>
+      <select id="observaciones">
+        <option value="">Seleccionar observación</option>
+        <option>ok</option>
+        <option>Scrap</option>
+        <option>Venta Especial</option>
+        <option>Faltante de origen</option>
+        <option>Faltante en fábrica</option>
+        <option>Dañado de origen</option>
+        <option>Dañado en fábrica</option>
+        <option>Dañado en línea</option>
+        <option>Defectuoso de origen</option>
+      </select>
 
-<form id="formGDP" class="hidden">
-  <input placeholder="Escanear tarjeta del operador" id="usuario" required />
-  <input placeholder="Código" id="codigo" required />
-  <input placeholder="Descripción" id="descripcion" required readonly />
-  <input type="number" placeholder="Entrada de stock" id="entrada" />
-  <input type="number" placeholder="Salida de stock" id="salida" />
-  <input placeholder="Estantería" id="rack" required />
-  <select id="box" required>
-    <option value="">Seleccionar línea</option>
-    <option>Pañol</option>
-    <option>L21</option>
-    <option>L14</option>
-    <option>L12</option>
-    <option>L09</option>
-    <option>L06</option>
-    <option>Reparaciones</option>
-    <option>Pintura</option>
-  </select>
-  <select id="observaciones">
-    <option value="">Seleccionar observación</option>
-    <option>ok</option>
-    <option>Scrap</option>
-    <option>Venta Especial</option>
-    <option>Faltante de origen</option>
-    <option>Faltante en fábrica</option>
-    <option>Dañado de origen</option>
-    <option>Dañado en fábrica</option>
-    <option>Dañado en línea</option>
-    <option>Defectuoso de origen</option>
-  </select>
-  <button type="submit">Enviar</button>
-</form>
+      <button type="submit">Enviar</button>
+    </form>
+  </div>
 
-<form id="formScrap" class="hidden">
-  <input type="date" id="fecha" required />
-  <input placeholder="Responsable" id="responsable" required />
-  <input type="file" id="archivoExcel" accept=".xlsx,.xls" />
-  <select id="modelo" required>
-    <option value="">Seleccionar modelo</option>
-  </select>
-  <select id="pieza" required>
-    <option value="">Seleccionar pieza</option>
-  </select>
-  <input type="number" placeholder="Cantidad" id="cantidad" required />
-  <input placeholder="Orden" id="orden" required />
-  <select id="sector" required>
-    <option value="">Seleccionar sector</option>
-    <option>Pañol</option>
-    <option>L21</option>
-    <option>L14</option>
-    <option>L12</option>
-    <option>L09</option>
-    <option>L06</option>
-    <option>Reparaciones</option>
-    <option>Pintura</option>
-  </select>
-  <input placeholder="N° de caja" id="caja" required />
-  <button type="submit">Enviar</button>
-</form>
-</div>
+  <script>
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbx3HUQsI1kMjnWx8rtfb6c4ih9_1f1hEcAm37uc4gVEsmD65wrzrHikDGPtgaabCQ1OJw/exec';
 
-<script>
-const scriptURL = "https://script.google.com/macros/s/AKfycbx3HUQsI1kMjnWx8rtfb6c4ih9_1f1hEcAm37uc4gVEsmD65wrzrHikDGPtgaabCQ1OJw/exec"; // Reemplaza con tu URL de Google Apps Script
-const tipoReporte = document.getElementById("tipoReporte");
-const formGDP = document.getElementById("formGDP");
-const formScrap = document.getElementById("formScrap");
+    const entradaInput = document.getElementById('entrada');
+    const salidaInput = document.getElementById('salida');
 
-// Mostrar formulario según tipo de reporte
-tipoReporte.addEventListener("change", () => {
-  formGDP.classList.add("hidden");
-  formScrap.classList.add("hidden");
-  if(tipoReporte.value==="GDP") formGDP.classList.remove("hidden");
-  if(tipoReporte.value==="Scrap") formScrap.classList.remove("hidden");
-});
-
-// GDP
-const entradaInput = document.getElementById("entrada");
-const salidaInput = document.getElementById("salida");
-entradaInput.addEventListener("input",()=>{ salidaInput.disabled = entradaInput.value !== ""; });
-salidaInput.addEventListener("input",()=>{ entradaInput.disabled = salidaInput.value !== ""; });
-
-const productos = {"MPR394":"Bajoasiento A","MPR12":"Baulera B","MPR389":"Baulera B plus","MPR421":"Cubrebarral AZUL","MPR431":"Cubrebarral BLANCO","MPR436":"Cubrebarral NEGRO","MPR426":"Cubrebarral ROJO"};
-
-document.getElementById("codigo").addEventListener("input",function(){
-  const codigo=this.value.trim().toUpperCase();
-  const descripcion=productos[codigo];
-  document.getElementById("descripcion").value=descripcion||"";
-});
-
-formGDP.addEventListener("submit", e=>{
-  e.preventDefault();
-  const entradaValue = entradaInput.value || "0";
-  const salidaValue = salidaInput.value || "0";
-  if(entradaValue==="0" && salidaValue==="0"){ alert("Debes ingresar entrada o salida"); return; }
-
-  const data = {
-    tipoReporte:"GDP",
-    usuario:document.getElementById("usuario").value,
-    codigo:document.getElementById("codigo").value,
-    descripcion:document.getElementById("descripcion").value,
-    entrada:entradaValue,
-    salida:salidaValue,
-    estanteria:document.getElementById("rack").value,
-    linea:document.getElementById("box").value,
-    observaciones:document.getElementById("observaciones").value
-  };
-
-  fetch(scriptURL, { method:"POST", body:JSON.stringify(data), headers:{"Content-Type":"application/json"} })
-  .then(()=>{ alert("Datos GDP enviados"); formGDP.reset(); entradaInput.disabled=false; salidaInput.disabled=false; })
-  .catch(err=>alert("Error al enviar: "+err.message));
-});
-
-// Scrap con Excel
-let maestro = {};
-document.getElementById("archivoExcel").addEventListener("change", e=>{
-  const file = e.target.files[0];
-  const reader = new FileReader();
-  reader.onload = function(ev){
-    const data = new Uint8Array(ev.target.result);
-    const workbook = XLSX.read(data,{type:"array"});
-    const sheetName = workbook.SheetNames[0];
-    const sheet = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-
-    maestro = {};
-    sheet.forEach(r => {
-      const m=r["Modelo"], p=r["Pieza"];
-      if(m && p){ if(!maestro[m]) maestro[m]=[]; if(!maestro[m].includes(p)) maestro[m].push(p); }
+    entradaInput.addEventListener('input', () => {
+      salidaInput.disabled = entradaInput.value !== "";
     });
 
-    const modeloSelect = document.getElementById("modelo");
-    modeloSelect.innerHTML = "<option value=''>Seleccionar modelo</option>";
-    Object.keys(maestro).forEach(m => { 
-      const opt = document.createElement("option");
-      opt.value = m; opt.textContent = m; modeloSelect.appendChild(opt);
+    salidaInput.addEventListener('input', () => {
+      entradaInput.disabled = salidaInput.value !== "";
     });
-    document.getElementById("pieza").innerHTML="<option value=''>Seleccionar pieza</option>";
-  };
-  reader.readAsArrayBuffer(file);
-});
 
-document.getElementById("modelo").addEventListener("change", function(){
-  const piezaSelect = document.getElementById("pieza");
-  piezaSelect.innerHTML="<option value=''>Seleccionar pieza</option>";
-  if(maestro[this.value]){
-    maestro[this.value].forEach(p => {
-      const opt = document.createElement("option");
-      opt.value = p; opt.textContent = p; piezaSelect.appendChild(opt);
+    const productos = {
+      "MPR394": "Bajoasiento A",
+      "MPR12": "Baulera B",
+      "MPR389": "Baulera B plus",
+      "MPR421": "Cubrebarral AZUL",
+      "MPR431": "Cubrebarral BLANCO",
+      "MPR436": "Cubrebarral NEGRO",
+      "MPR426": "Cubrebarral ROJO",
+    };
+
+    document.getElementById('codigo').addEventListener('input', function () {
+      const codigoIngresado = this.value.trim().toUpperCase();
+      const descripcion = productos[codigoIngresado];
+      document.getElementById('descripcion').value = descripcion || '';
+
+      if (!descripcion && codigoIngresado.length > 3) {
+        document.getElementById('descripcion').placeholder = 'Código no reconocido';
+      } else {
+        document.getElementById('descripcion').placeholder = 'Descripción';
+      }
     });
-  }
-});
 
-formScrap.addEventListener("submit", e=>{
-  e.preventDefault();
-  const data = {
-    tipoReporte:"Scrap",
-    fecha:document.getElementById("fecha").value,
-    responsable:document.getElementById("responsable").value,
-    modelo:document.getElementById("modelo").value,
-    pieza:document.getElementById("pieza").value,
-    cantidad:document.getElementById("cantidad").value,
-    orden:document.getElementById("orden").value,
-    sector:document.getElementById("sector").value,
-    caja:document.getElementById("caja").value
-  };
-  fetch(scriptURL, { method:"POST", body:JSON.stringify(data), headers:{"Content-Type":"application/json"} })
-  .then(()=>{ alert("Scrap enviado"); formScrap.reset(); })
-  .catch(err=>alert("Error al enviar: "+err.message));
-});
-</script>
+    document.getElementById('form').addEventListener('submit', e => {
+      e.preventDefault();
+
+      const entradaValue = entradaInput.value.trim();
+      const salidaValue = salidaInput.value.trim();
+
+      if (entradaValue === "" && salidaValue === "") {
+        alert("Debes ingresar una entrada o una salida de stock.");
+        return;
+      }
+
+      let salidaNegativa = "0";
+      if (salidaValue) {
+        salidaNegativa = `-${Math.abs(parseInt(salidaValue))}`;
+        const confirmarSalida = confirm(`Vas a registrar una salida de ${salidaNegativa} unidades. ¿Confirmás?`);
+        if (!confirmarSalida) return;
+      }
+
+      const data = {
+        usuario: document.getElementById('usuario').value,
+        codigo: document.getElementById('codigo').value,
+        descripcion: document.getElementById('descripcion').value,
+        entrada: entradaValue || "0",
+        salida: salidaNegativa,
+        estanteria: document.getElementById('rack').value,
+        linea: document.getElementById('box').value,
+        observaciones: document.getElementById('observaciones').value
+      };
+
+fetch(scriptURL, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' }
+})
+
+      .then(() => {
+        alert('Datos enviados correctamente');
+        document.getElementById('form').reset();
+        entradaInput.disabled = false;
+        salidaInput.disabled = false;
+      })
+      .catch(error => alert('Error al enviar: ' + error.message));
+    });
+  </script>
 </body>
 </html>
