@@ -12,51 +12,27 @@
       min-height: 100vh;
       align-items: center;
       justify-content: center;
-      margin: 0;
-      padding: 20px;
+      margin: 0; padding: 20px;
     }
     .form-container {
       background: #fff;
       padding: 25px;
       border-radius: 15px;
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-      width: 100%;
-      max-width: 450px;
+      width: 100%; max-width: 450px;
     }
-    .form-container h2 {
-      text-align: center;
-      margin-bottom: 20px;
-      color: #333;
-    }
+    .form-container h2 { text-align: center; margin-bottom: 20px; color: #333; }
     input, select {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 12px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      box-sizing: border-box;
+      width: 100%; padding: 10px; margin-bottom: 12px;
+      border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box;
     }
-    .grid-ubicacion {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
+    .grid-ubicacion { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     button {
-      width: 100%;
-      background: #74ebd5;
-      border: none;
-      color: #333;
-      font-weight: bold;
-      padding: 12px;
-      border-radius: 10px;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background 0.3s;
-      margin-top: 10px;
+      width: 100%; background: #74ebd5; border: none; color: #333;
+      font-weight: bold; padding: 12px; border-radius: 10px;
+      font-size: 16px; cursor: pointer; transition: background 0.3s; margin-top: 10px;
     }
-    button:hover {
-      background: #62d3c0;
-    }
+    button:hover { background: #62d3c0; }
     .readonly-bg { background-color: #f9f9f9; }
     p { margin: 5px 0; font-size: 0.9em; color: #666; font-weight: bold; }
   </style>
@@ -126,7 +102,6 @@
     const entradaInput = document.getElementById('entrada');
     const salidaInput = document.getElementById('salida');
 
-    // Bloquear el otro campo si uno tiene datos
     entradaInput.addEventListener('input', () => { salidaInput.disabled = entradaInput.value !== ""; });
     salidaInput.addEventListener('input', () => { entradaInput.disabled = salidaInput.value !== ""; });
 
@@ -500,17 +475,10 @@
     document.getElementById('form').addEventListener('submit', e => {
       e.preventDefault();
       const btn = document.getElementById('btnEnviar');
-      const entradaValue = entradaInput.value.trim();
-      const salidaValue = salidaInput.value.trim();
-
-      if (!entradaValue && !salidaValue) {
-        alert("Debes ingresar una entrada o una salida.");
-        return;
-      }
-
+      
       let salidaFinal = "0";
-      if (salidaValue) {
-        salidaFinal = `-${Math.abs(parseInt(salidaValue))}`;
+      if (salidaInput.value) {
+        salidaFinal = `-${Math.abs(parseInt(salidaInput.value))}`;
         if (!confirm(`¿Confirmas la salida de ${salidaFinal} unidades?`)) return;
       }
 
@@ -522,7 +490,7 @@
         usuario: document.getElementById('usuario').value,
         codigo: document.getElementById('codigo').value,
         descripcion: document.getElementById('descripcion').value,
-        entrada: entradaValue || "0",
+        entrada: entradaInput.value || "0",
         salida: salidaFinal,
         calle: document.getElementById('calle').value,
         estanteria: document.getElementById('rack').value,
@@ -554,4 +522,3 @@
   </script>
 </body>
 </html>
-
