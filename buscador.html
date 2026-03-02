@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Stock por Rack y Box - La Emilia</title>
-
+  
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -39,14 +39,9 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
 
-    .logo { height: 50px; filter: brightness(0) invert(1); }
-
-    .button-group { display: flex; gap: 12px; }
+    .logo-text { color: white; font-weight: bold; font-size: 1.2rem; letter-spacing: 1px; }
 
     .button-group button {
-      display: flex;
-      align-items: center;
-      gap: 8px;
       background-color: rgba(255,255,255,0.2);
       color: #ffffff;
       border: 1px solid rgba(255,255,255,0.4);
@@ -54,112 +49,121 @@
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.3s;
+      font-weight: 500;
     }
 
     .button-group button:hover { background-color: white; color: var(--primary-color); }
 
     .container {
       background-color: var(--bg-white);
-      max-width: 1100px;
-      margin: 40px auto;
-      padding: 35px;
+      max-width: 1200px;
+      margin: 30px auto;
+      padding: 30px;
       border-radius: var(--border-radius);
-      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
     }
 
-    h1, h2 { text-align: center; color: var(--primary-color); }
+    h1 { text-align: center; color: var(--primary-color); margin-bottom: 30px; }
 
-    input[type="file"] {
-      display: block;
-      margin: 20px auto;
-      padding: 10px;
-      border: 2px dashed var(--primary-color);
-      width: 80%;
+    .file-upload-wrapper {
       text-align: center;
-      border-radius: 8px;
+      border: 2px dashed #ccc;
+      padding: 30px;
+      border-radius: var(--border-radius);
+      margin-bottom: 30px;
+      background: #fafafa;
     }
 
     #dashboard {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 20px;
-      margin: 30px 0;
+      margin-bottom: 30px;
     }
 
     .dash-card {
-      background: #eef1f8;
-      border-left: 6px solid var(--primary-color);
+      background: #fff;
+      border: 1px solid #eee;
+      border-left: 5px solid var(--primary-color);
       padding: 20px;
-      border-radius: var(--border-radius);
-      text-align: center;
-    }
-
-    .dash-card span {
-      display: block;
-      font-size: 1.6rem;
-      font-weight: bold;
-      color: var(--accent-color);
-    }
-
-    .search-container { display: flex; justify-content: flex-end; margin-bottom: 15px; }
-    .search-container input {
-      padding: 10px 15px;
-      border: 1px solid #ccc;
       border-radius: 8px;
-      width: 300px;
+      text-align: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.02);
     }
 
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th { background: var(--primary-color); color: white; padding: 12px; text-align: left; }
-    td { padding: 10px; border-bottom: 1px solid #ddd; }
-    tr:nth-child(even) { background-color: #f9f9fb; }
+    .dash-card strong { display: block; color: #666; font-size: 0.9rem; margin-bottom: 5px; }
+    .dash-card span { font-size: 1.8rem; font-weight: bold; color: var(--accent-color); }
+
+    .search-box {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 1rem;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f8f9fa; color: var(--primary-color); padding: 15px; text-align: left; border-bottom: 2px solid #eee; }
+    td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 0.95rem; }
+    tr:hover { background-color: #f1f7f6; }
+
+    .ubicacion-badge {
+      background: #e1f0ef;
+      color: #04847c;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+
+    .stock-badge { font-weight: bold; font-size: 1.1rem; }
 
     @media print {
-      .menu-bar, input, .search-container, #dashboard, canvas { display: none; }
-      .container { box-shadow: none; margin: 0; padding: 0; width: 100%; }
+      .menu-bar, .file-upload-wrapper, .search-box, canvas { display: none; }
+      .container { box-shadow: none; margin: 0; width: 100%; max-width: 100%; }
     }
   </style>
 </head>
-
 <body>
+
   <div class="menu-bar">
-    <div style="color:white; font-weight:bold; font-size:1.2rem;">SISTEMA DE STOCK</div>
+    <div class="logo-text">LA EMILIA - SISTEMA DE STOCK</div>
     <div class="button-group">
       <button onclick="window.print()"><i class="fas fa-print"></i> Imprimir Reporte</button>
     </div>
   </div>
 
   <div class="container">
-    <h1>Control de Stock por Estantería y Sector</h1>
+    <h1><i class="fas fa-boxes"></i> Control de Stock y Ubicaciones</h1>
 
-    <input type="file" id="fileInput" accept=".xls,.xlsx" />
+    <div class="file-upload-wrapper">
+      <p>Cargue el archivo <strong>GDP Base de datos.xlsx</strong> para procesar</p>
+      <input type="file" id="fileInput" accept=".xls,.xlsx" />
+    </div>
 
     <div id="dashboard">
-      <div class="dash-card"><strong>Items:</strong><span id="totalItems">0</span></div>
-      <div class="dash-card"><strong>Stock Total:</strong><span id="totalStock">0</span></div>
-      <div class="dash-card"><strong>Estanterías:</strong><span id="totalRacks">0</span></div>
-      <div class="dash-card"><strong>Sectores:</strong><span id="totalBoxes">0</span></div>
+      <div class="dash-card"><strong>Items Únicos</strong><span id="totalItems">0</span></div>
+      <div class="dash-card"><strong>Stock Físico Total</strong><span id="totalStock">0</span></div>
+      <div class="dash-card"><strong>Estanterías Activas</strong><span id="totalRacks">0</span></div>
     </div>
 
-    <canvas id="stockChart" height="100"></canvas>
+    <canvas id="stockChart" height="100" style="margin-bottom: 40px;"></canvas>
 
-    <h2>Inventario Consolidado</h2>
-    <div class="search-container">
-      <input type="text" id="searchInput" placeholder="Buscar por código, estantería..." oninput="buscarEnTabla()">
-    </div>
+    <input type="text" id="searchInput" class="search-box" placeholder="🔍 Buscar por código, descripción o ubicación (ej: Calle 01)..." oninput="buscar()">
 
     <table id="resultTable">
       <thead>
         <tr>
           <th>Código</th>
           <th>Descripción</th>
-          <th>Estantería</th>
-          <th>Sector</th>
-          <th>Stock Real</th>
+          <th>Ubicación Detallada (Calle/Est/Fila/Pos)</th>
+          <th>Stock Actual</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td colspan="5" style="text-align:center; padding:20px;">Cargue el archivo Excel para procesar los datos</td></tr>
+        <tr><td colspan="4" style="text-align:center; padding:40px; color:#999;">Esperando archivo de datos...</td></tr>
       </tbody>
     </table>
   </div>
@@ -168,115 +172,142 @@
     let datosOriginales = [];
     let chart;
 
-    document.getElementById('fileInput').addEventListener('change', function (e) {
+    // 1. Lector de Archivo
+    document.getElementById('fileInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = function (e) {
+      reader.onload = function(e) {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        
+        // Procesamos la primera hoja o buscamos una llamada 'GDPBD' o 'OK'
+        const sheetName = workbook.SheetNames.includes('GDPBD') ? 'GDPBD' : workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
         const json = XLSX.utils.sheet_to_json(worksheet);
-        procesarDatos(json);
+        
+        procesarExcel(json);
       };
       reader.readAsArrayBuffer(file);
     });
 
-    function procesarDatos(datosExcel) {
-      const acumulado = {};
-      
-      datosExcel.forEach(fila => {
-        const cod = (fila['Codigo'] || '').toString().trim();
-        const desc = (fila['Descripción'] || '').toString().trim();
-        const est = (fila['Estanteria'] || 'S/E').toString().trim();
-        const sec = (fila['Sector'] || 'S/S').toString().trim();
-        const ent = parseFloat(fila['Entrada de Stock']) || 0;
-        const sal = parseFloat(fila['Salida de Stock']) || 0;
+    // 2. Función para normalizar nombres de columnas (ignora tildes y mayúsculas)
+    function getVal(obj, keyName) {
+      const normalizedKey = keyName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      for (let k in obj) {
+        let currentK = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (currentK === normalizedKey) return obj[k];
+      }
+      return null;
+    }
+
+    // 3. Procesamiento de Datos
+    function procesarExcel(data) {
+      const tempMap = {};
+
+      data.forEach(row => {
+        const cod = (getVal(row, 'Codigo') || getVal(row, 'Código') || '').toString().trim();
+        const desc = (getVal(row, 'Descripcion') || getVal(row, 'Descripción') || 'S/D').toString().trim();
+        
+        // Columnas específicas de tu archivo
+        const calle = (getVal(row, 'Calle') || '').toString().trim();
+        const est = (getVal(row, 'Estanteria') || getVal(row, 'Estantería') || '').toString().trim();
+        const fila = (getVal(row, 'Fila') || '').toString().trim();
+        const pos = (getVal(row, 'Posicion') || getVal(row, 'Posición') || '').toString().trim();
+
+        // Creamos una etiqueta de ubicación legible
+        const ubicacion = `${calle} ${est} ${fila} ${pos}`.replace(/\s+/g, ' ').trim() || 'SIN UBICACIÓN';
+
+        const entrada = parseFloat(getVal(row, 'Entrada de Stock')) || 0;
+        const salida = parseFloat(getVal(row, 'Salida de Stock')) || 0;
+        const balance = entrada - salida;
 
         if (!cod) return;
 
-        // Clave única para agrupar por ubicación exacta
-        const clave = `${cod}-${est}-${sec}`;
+        // Agrupamos por Código + Ubicación
+        const idUnico = `${cod}-${ubicacion}`;
 
-        if (!acumulado[clave]) {
-          acumulado[clave] = {
+        if (!tempMap[idUnico]) {
+          tempMap[idUnico] = {
             codigo: cod,
             descripcion: desc,
+            ubicacion: ubicacion,
             estanteria: est,
-            sector: sec,
             stock: 0
           };
         }
-        acumulado[clave].stock += (ent - sal);
+        tempMap[idUnico].stock += balance;
       });
 
-      // Filtrar solo los que tienen stock mayor a 0
-      datosOriginales = Object.values(acumulado).filter(i => i.stock > 0);
-      renderizarTabla(datosOriginales);
+      // Solo mostramos items que tengan stock diferente a 0
+      datosOriginales = Object.values(tempMap).filter(item => item.stock !== 0);
+      renderizar(datosOriginales);
     }
 
-    function renderizarTabla(lista) {
+    // 4. Renderizado de Interfaz
+    function renderizar(lista) {
       const tbody = document.querySelector('#resultTable tbody');
       tbody.innerHTML = '';
       
       let totalStock = 0;
-      let racks = new Set();
-      let boxes = new Set();
-      const labels = [];
-      const values = [];
+      let estanteriasUnicas = new Set();
 
       lista.forEach(item => {
         totalStock += item.stock;
-        racks.add(item.estanteria);
-        boxes.add(item.sector);
-        labels.push(item.codigo);
-        values.push(item.stock);
+        if(item.estanteria) estanteriasUnicas.add(item.estanteria);
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td>${item.codigo}</td>
+          <td><strong>${item.codigo}</strong></td>
           <td>${item.descripcion}</td>
-          <td>${item.estanteria}</td>
-          <td>${item.sector}</td>
-          <td style="font-weight:bold; color:var(--primary-color)">${item.stock}</td>
+          <td><span class="ubicacion-badge">${item.ubicacion}</span></td>
+          <td class="stock-badge" style="color: ${item.stock > 0 ? '#04847c' : '#d9534f'}">${item.stock}</td>
         `;
         tbody.appendChild(tr);
       });
 
+      // Actualizar Contadores
       document.getElementById('totalItems').textContent = lista.length;
-      document.getElementById('totalStock').textContent = totalStock;
-      document.getElementById('totalRacks').textContent = racks.size;
-      document.getElementById('totalBoxes').textContent = boxes.size;
+      document.getElementById('totalStock').textContent = Math.round(totalStock);
+      document.getElementById('totalRacks').textContent = estanteriasUnicas.size;
 
-      actualizarGrafico(labels, values);
+      // Actualizar Gráfico (Top 10)
+      const top10 = [...lista].sort((a,b) => b.stock - a.stock).slice(0, 10);
+      actualizarGrafico(top10);
     }
 
-    function buscarEnTabla() {
-      const termino = document.getElementById('searchInput').value.toLowerCase();
-      const filtrados = datosOriginales.filter(item => 
-        item.codigo.toLowerCase().includes(termino) || 
-        item.descripcion.toLowerCase().includes(termino) ||
-        item.estanteria.toLowerCase().includes(termino)
+    // 5. Buscador en tiempo real
+    function buscar() {
+      const term = document.getElementById('searchInput').value.toLowerCase();
+      const filtrados = datosOriginales.filter(i => 
+        i.codigo.toLowerCase().includes(term) || 
+        i.descripcion.toLowerCase().includes(term) ||
+        i.ubicacion.toLowerCase().includes(term)
       );
-      renderizarTabla(filtrados);
+      renderizar(filtrados);
     }
 
-    function actualizarGrafico(labels, data) {
+    // 6. Gráfico
+    function actualizarGrafico(items) {
       const ctx = document.getElementById('stockChart').getContext('2d');
       if (chart) chart.destroy();
-      
+
       chart = new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: labels.slice(0, 15), // Mostrar solo los primeros 15 para no saturar
+          labels: items.map(i => i.codigo),
           datasets: [{
-            label: 'Stock Actual (Top 15)',
-            data: data.slice(0, 15),
-            backgroundColor: '#04847c'
+            label: 'Stock (Top 10 Artículos)',
+            data: items.map(i => i.stock),
+            backgroundColor: '#04847c',
+            borderRadius: 5
           }]
         },
-        options: { responsive: true }
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } }
+        }
       });
     }
   </script>
