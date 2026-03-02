@@ -2,117 +2,48 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Generador de Etiquetas</title>
+  <title>Generador 80x48mm</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
   <style>
-    body {
-      font-family: "Segoe UI", sans-serif;
-      background-color: #f4f4f9;
-      margin: 0;
-      padding: 0;
+    body { font-family: "Segoe UI", Arial, sans-serif; background-color: #f0f2f5; padding: 20px; }
+    .container { max-width: 800px; margin: auto; padding: 25px; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
+    input, select, button { margin: 8px; padding: 12px; border-radius: 6px; border: 1px solid #ddd; }
+    button { background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    button:hover { background-color: #0056b3; }
+    
+    #etiquetas-container { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-top: 25px; }
+    
+    /* 📏 ETIQUETA 80mm x 48mm */
+    .etiqueta { 
+      width: 80mm; height: 48mm; border: 1px solid #eee; padding: 3mm; 
+      display: flex; flex-direction: column; justify-content: space-between; 
+      align-items: center; background: white; box-sizing: border-box; overflow: hidden;
     }
 
-    .container {
-      max-width: 1000px;
-      margin: 40px auto;
-      padding: 30px;
-      background: #ffffff;
-      border-radius: 10px;
-      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-      text-align: center;
-    }
+    .codigo-texto { font-size: 20px; font-weight: bold; color: #000; margin: 0; }
+    .descripcion-texto { font-size: 13px; color: #333; margin: 0; text-transform: uppercase; font-weight: 600; }
+    
+    /* El SVG debe tener dimensiones claras para que JsBarcode lo rellene */
+    .barcode-svg { width: 90%; height: 22mm; }
 
-    h1 {
-      margin-bottom: 20px;
-      font-size: 28px;
-      color: #333;
-    }
-
-    input[type="file"],
-    select,
-    button,
-    input[type="number"] {
-      margin: 10px;
-      padding: 10px 15px;
-      font-size: 16px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-    }
-
-    button {
-      background-color: #007bff;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-
-    #etiquetas-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 15px;
-      justify-content: center;
-      margin-top: 30px;
-    }
-
-    .etiqueta {
-      width: 10cm;
-      height: 10cm;
-      border: 1px solid #000;
-      box-sizing: border-box;
-      padding: 1cm;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 13px;
-      text-align: center;
-      background: white;
-      page-break-inside: avoid;
-    }
-
-    svg {
-      width: 100%;
-      height: auto;
-      max-height: 2.3cm;
-    }
-
-    #etiquetas-container.hidden {
-      display: none;
-    }
-
-    /* 🔒 CLAVE: NO altera tu impresión */
-    @media print {
-      input[type="number"] {
-        display: none !important;
-      }
-    }
+    .hidden { display: none !important; }
   </style>
 </head>
-
 <body>
 
 <div class="container">
-  <h1>Buscar por código o descripción.</h1>
-  <input type="text" id="buscador" placeholder="Buscar por código o descripción..." />
-</div>
-
-<div class="container">
-  <h1>Generador de Etiquetas</h1>
-
+  <h2>Generador de Etiquetas (80x48mm)</h2>
   <input type="file" id="file-input" accept=".xlsx,.xls" />
   <br>
-
-  <label for="etiqueta-select">Selecciona el código a imprimir:</label>
-  <select id="etiqueta-select">
-    <option value="">--Selecciona una etiqueta--</option>
-  </select>
-
-  <button onclick="imprimirSeleccionada()">Imprimir Seleccionada</button>
-
-  <div id="etiquetas-container" class="hidden"></div>
+  <input type="text" id="buscador" placeholder="🔍 Buscar por código o descripción..." style="width: 70%;">
+  <br>
+  <select id="etiqueta-select"><option value="">-- Carga un archivo Excel --</option></select>
+  <button onclick="imprimirSeleccionada()">🖨️ Imprimir Seleccionada</button>
 </div>
+
+<div id="etiquetas-container"></div>
 
 <script>
 let etiquetasDatos = [];
@@ -123,158 +54,122 @@ document.getElementById('file-input').addEventListener('change', function (e) {
 
   const reader = new FileReader();
   reader.onload = function (event) {
-    const data = new Uint8Array(event.target.result);
-    const workbook = XLSX.read(data, { type: 'array' });
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+    try {
+      const data = new Uint8Array(event.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
 
-    // 🔹 único agregado lógico
-    etiquetasDatos = jsonData.map(i => ({ ...i, _cantidad: 1 }));
+      etiquetasDatos = jsonData.map((item, index) => ({ 
+        ...item, 
+        id: "etq-" + index, // ID único alfanumérico
+        CODIGO: item.CODIGO ? item.CODIGO.toString() : "0000"
+      }));
 
-    generarEtiquetas(etiquetasDatos);
-    llenarSelect(etiquetasDatos);
+      renderizarTodo(etiquetasDatos);
+    } catch (err) {
+      alert("Error al leer el archivo. Asegúrate de que sea un Excel válido.");
+    }
   };
   reader.readAsArrayBuffer(file);
 });
 
-function generarEtiquetas(datos) {
+// Buscador
+document.getElementById('buscador').addEventListener('input', function () {
+  const termino = this.value.toLowerCase();
+  const filtrados = etiquetasDatos.filter(item => 
+    item.CODIGO.toLowerCase().includes(termino) || 
+    (item.DESCRIPCION || "").toLowerCase().includes(termino)
+  );
+  renderizarTodo(filtrados);
+});
+
+function renderizarTodo(datos) {
   const contenedor = document.getElementById("etiquetas-container");
-  contenedor.innerHTML = "";
-  contenedor.classList.remove("hidden");
-
-  datos.forEach((item, index) => {
-
-    const div = document.createElement("div");
-    div.className = "etiqueta";
-    div.id = `etiqueta-${index}`;
-
-    div.innerHTML = `
-      <svg id="barcode-codigo-${index}"></svg>
-      <div><strong>Descripción:</strong> ${item.DESCRIPCION || ""}</div>
-      <svg id="barcode-canasto-${index}"></svg>
-
-      <!-- 🔹 input editable (solo pantalla) -->
-      <div>
-        Cantidad:
-        <input type="number" min="1" value="${item._cantidad}"
-          onchange="actualizarCantidad(${index}, this.value)">
-      </div>
-
-      <div class="info">
-        <strong>Fecha:</strong> ${item.FECHA || ""}<br>
-        <strong>___________________</strong><br>
-        <strong>Turno:</strong> ${item.TURNO || ""}<br>
-        <strong>___________________</strong><br>
-        <strong>Canasto/Pallet:</strong> ${item._cantidad}
-      </div>
-    `;
-
-    contenedor.appendChild(div);
-
-    JsBarcode(`#barcode-codigo-${index}`, item.CODIGO?.toString() || "0", {
-      format: "CODE128",
-      displayValue: true,
-      fontSize: 12,
-      textMargin: 2,
-      height: 50
-    });
-
-    JsBarcode(`#barcode-canasto-${index}`, item._cantidad.toString(), {
-      format: "CODE128",
-      displayValue: true,
-      fontSize: 12,
-      textMargin: 2,
-      height: 50
-    });
-  });
-}
-
-function actualizarCantidad(index, valor) {
-  etiquetasDatos[index]._cantidad = valor || 1;
-
-  JsBarcode(`#barcode-canasto-${index}`, etiquetasDatos[index]._cantidad.toString(), {
-    format: "CODE128",
-    displayValue: true,
-    fontSize: 12,
-    textMargin: 2,
-    height: 50
-  });
-}
-
-function llenarSelect(datos) {
   const select = document.getElementById("etiqueta-select");
-  select.innerHTML = '<option value="">--Selecciona una etiqueta--</option>';
-  datos.forEach((item, index) => {
+  
+  contenedor.innerHTML = "";
+  select.innerHTML = '<option value="">--Selecciona un código--</option>';
+
+  datos.forEach((item) => {
+    // Select
     const option = document.createElement("option");
-    option.value = index;
+    option.value = item.id;
     option.textContent = `${item.CODIGO} - ${item.DESCRIPCION}`;
     select.appendChild(option);
+
+    // Etiqueta HTML
+    const div = document.createElement("div");
+    div.className = "etiqueta";
+    div.id = `real-${item.id}`;
+    div.innerHTML = `
+      <div class="codigo-texto">${item.CODIGO}</div>
+      <svg class="barcode-svg" id="svg-${item.id}"></svg>
+      <div class="descripcion-texto">${item.DESCRIPCION || ""}</div>
+    `;
+    contenedor.appendChild(div);
+
+    // Generar Barcode con un pequeño delay para asegurar que el SVG existe en el DOM
+    setTimeout(() => {
+      JsBarcode(`#svg-${item.id}`, item.CODIGO, {
+        format: "CODE128",
+        displayValue: false,
+        height: 60,
+        width: 2,
+        margin: 0
+      });
+    }, 10);
   });
 }
 
-/* 🔒 TU FUNCIÓN ORIGINAL – SIN TOCAR */
 function imprimirSeleccionada() {
-  const select = document.getElementById("etiqueta-select");
-  const selectedIndex = select.value;
+  const idVal = document.getElementById("etiqueta-select").value;
+  if (!idVal) return alert("Por favor, selecciona una etiqueta primero.");
 
-  if (!selectedIndex) {
-    alert("Por favor, selecciona una etiqueta.");
-    return;
-  }
+  const elemento = document.getElementById(`real-${idVal}`);
+  if (!elemento) return;
 
-  const etiqueta = document.getElementById(`etiqueta-${selectedIndex}`);
-  const contenedorImprimir = document.createElement('div');
-  contenedorImprimir.appendChild(etiqueta.cloneNode(true));
+  const printWindow = window.open('', '_blank');
+  
+  // Clonamos el contenido para pasarlo a la ventana de impresión
+  const contenido = elemento.innerHTML;
 
-  const printWindow = window.open('', '', 'height=800,width=600');
   printWindow.document.write(`
     <html>
       <head>
-        <title>Imprimir Etiqueta</title>
+        <title>Impresión de Etiqueta</title>
         <style>
-          @page { size: A4; margin: 0; }
-          html, body { height: 100%; margin: 0; }
-          body { display: flex; justify-content: center; align-items: center; }
-          .etiqueta {
-            width: 10cm;
-            height: 10cm;
-            border: 1px solid #000;
-            padding: 1cm;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 13px;
-            text-align: center;
+          @page { size: 80mm 48mm; margin: 0; }
+          body { 
+            margin: 0; padding: 0;
+            display: flex; justify-content: center; align-items: center; 
+            height: 48mm; width: 80mm; font-family: sans-serif;
           }
-          svg {
-            width: 100%;
-            max-height: 2.3cm;
+          .etiqueta { 
+            width: 80mm; height: 48mm; 
+            display: flex; flex-direction: column; 
+            justify-content: space-between; align-items: center; 
+            text-align: center; padding: 4mm; box-sizing: border-box;
           }
+          .codigo-texto { font-size: 24px; font-weight: bold; }
+          .descripcion-texto { font-size: 14px; font-weight: bold; text-transform: uppercase; }
+          svg { width: 95%; max-height: 22mm; }
         </style>
       </head>
       <body>
-        ${contenedorImprimir.innerHTML}
+        <div class="etiqueta">${contenido}</div>
       </body>
     </html>
   `);
 
   printWindow.document.close();
-  printWindow.focus();
-  printWindow.print();
-  printWindow.close();
+
+  // Esperar a que los gráficos se procesen en la nueva ventana antes de imprimir
+  setTimeout(() => {
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+  }, 500);
 }
-
-document.getElementById('buscador').addEventListener('input', function () {
-  const termino = this.value.toLowerCase();
-  const datosFiltrados = etiquetasDatos.filter(item =>
-    (item.CODIGO || "").toString().toLowerCase().includes(termino) ||
-    (item.DESCRIPCION || "").toLowerCase().includes(termino)
-  );
-
-  generarEtiquetas(datosFiltrados);
-  llenarSelect(datosFiltrados);
-});
 </script>
 
 </body>
