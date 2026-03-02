@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Stock por Rack y Box - La Emilia</title>
+  <title>Stock Detallado - La Emilia</title>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -24,7 +24,6 @@
       background: var(--bg-light);
       margin: 0;
       padding-top: 70px;
-      color: var(--text-color);
     }
 
     .menu-bar {
@@ -39,60 +38,30 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
 
-    .logo-text { color: white; font-weight: bold; font-size: 1.2rem; letter-spacing: 1px; }
-
-    .button-group button {
-      background-color: rgba(255,255,255,0.2);
-      color: #ffffff;
-      border: 1px solid rgba(255,255,255,0.4);
-      padding: 8px 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.3s;
-      font-weight: 500;
-    }
-
-    .button-group button:hover { background-color: white; color: var(--primary-color); }
-
     .container {
       background-color: var(--bg-white);
-      max-width: 1200px;
+      max-width: 1300px;
       margin: 30px auto;
       padding: 30px;
       border-radius: var(--border-radius);
-      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-    }
-
-    h1 { text-align: center; color: var(--primary-color); margin-bottom: 30px; }
-
-    .file-upload-wrapper {
-      text-align: center;
-      border: 2px dashed #ccc;
-      padding: 30px;
-      border-radius: var(--border-radius);
-      margin-bottom: 30px;
-      background: #fafafa;
     }
 
     #dashboard {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
-      margin-bottom: 30px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
     }
 
     .dash-card {
-      background: #fff;
-      border: 1px solid #eee;
-      border-left: 5px solid var(--primary-color);
-      padding: 20px;
+      background: #f8f9fa;
+      border-bottom: 4px solid var(--primary-color);
+      padding: 15px;
       border-radius: 8px;
       text-align: center;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.02);
     }
 
-    .dash-card strong { display: block; color: #666; font-size: 0.9rem; margin-bottom: 5px; }
-    .dash-card span { font-size: 1.8rem; font-weight: bold; color: var(--accent-color); }
+    .dash-card span { display: block; font-size: 1.5rem; font-weight: bold; color: var(--accent-color); }
 
     .search-box {
       width: 100%;
@@ -100,215 +69,161 @@
       border: 1px solid #ddd;
       border-radius: 8px;
       margin-bottom: 20px;
-      font-size: 1rem;
     }
 
-    table { width: 100%; border-collapse: collapse; }
-    th { background: #f8f9fa; color: var(--primary-color); padding: 15px; text-align: left; border-bottom: 2px solid #eee; }
-    td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 0.95rem; }
-    tr:hover { background-color: #f1f7f6; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th { background: #f1f1f1; color: var(--primary-color); padding: 12px; text-align: left; border-bottom: 2px solid #ddd; }
+    td { padding: 10px; border-bottom: 1px solid #eee; }
+    tr:hover { background-color: #f9f9f9; }
 
-    .ubicacion-badge {
-      background: #e1f0ef;
+    .badge-loc {
+      background: #eef2f1;
       color: #04847c;
-      padding: 4px 8px;
+      padding: 2px 6px;
       border-radius: 4px;
-      font-weight: bold;
-      font-family: monospace;
-      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: uppercase;
     }
-
-    .stock-badge { font-weight: bold; font-size: 1.1rem; }
 
     @media print {
-      .menu-bar, .file-upload-wrapper, .search-box, canvas { display: none; }
-      .container { box-shadow: none; margin: 0; width: 100%; max-width: 100%; }
+      .menu-bar, input, .dash-card, canvas { display: none; }
+      .container { width: 100%; max-width: 100%; box-shadow: none; }
     }
   </style>
 </head>
 <body>
 
   <div class="menu-bar">
-    <div class="logo-text">LA EMILIA - SISTEMA DE STOCK</div>
-    <div class="button-group">
-      <button onclick="window.print()"><i class="fas fa-print"></i> Imprimir Reporte</button>
-    </div>
+    <div style="color:white; font-weight:bold;">LA EMILIA - SISTEMA DE RACKS</div>
+    <button onclick="window.print()" style="cursor:pointer; padding:5px 15px;">Imprimir</button>
   </div>
 
   <div class="container">
-    <h1><i class="fas fa-boxes"></i> Control de Stock y Ubicaciones</h1>
+    <h2>Control de Inventario por Ubicación</h2>
 
-    <div class="file-upload-wrapper">
-      <p>Cargue el archivo <strong>GDP Base de datos.xlsx</strong> para procesar</p>
-      <input type="file" id="fileInput" accept=".xls,.xlsx" />
-    </div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls" style="margin-bottom: 20px;"/>
 
     <div id="dashboard">
-      <div class="dash-card"><strong>Items Únicos</strong><span id="totalItems">0</span></div>
-      <div class="dash-card"><strong>Stock Físico Total</strong><span id="totalStock">0</span></div>
-      <div class="dash-card"><strong>Estanterías Activas</strong><span id="totalRacks">0</span></div>
+      <div class="dash-card"><strong>Items</strong><span id="totalItems">0</span></div>
+      <div class="dash-card"><strong>Stock Total</strong><span id="totalStock">0</span></div>
+      <div class="dash-card"><strong>Calles</strong><span id="countCalles">0</span></div>
+      <div class="dash-card"><strong>Estanterías</strong><span id="countRacks">0</span></div>
     </div>
 
-    <canvas id="stockChart" height="100" style="margin-bottom: 40px;"></canvas>
-
-    <input type="text" id="searchInput" class="search-box" placeholder="🔍 Buscar por código, descripción o ubicación (ej: Calle 01)..." oninput="buscar()">
+    <input type="text" id="searchInput" class="search-box" placeholder="Filtrar por código, descripción o calle..." oninput="buscar()">
 
     <table id="resultTable">
       <thead>
         <tr>
           <th>Código</th>
           <th>Descripción</th>
-          <th>Ubicación Detallada (Calle/Est/Fila/Pos)</th>
-          <th>Stock Actual</th>
+          <th>Calle</th>
+          <th>Estantería</th>
+          <th>Fila</th>
+          <th>Posición</th>
+          <th>Stock</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td colspan="4" style="text-align:center; padding:40px; color:#999;">Esperando archivo de datos...</td></tr>
+        <tr><td colspan="7" style="text-align:center; padding:30px;">Cargue el archivo para ver el desglose</td></tr>
       </tbody>
     </table>
   </div>
 
   <script>
     let datosOriginales = [];
-    let chart;
 
-    // 1. Lector de Archivo
     document.getElementById('fileInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
-      if (!file) return;
-
       const reader = new FileReader();
       reader.onload = function(e) {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
-        
-        // Procesamos la primera hoja o buscamos una llamada 'GDPBD' o 'OK'
-        const sheetName = workbook.SheetNames.includes('GDPBD') ? 'GDPBD' : workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(worksheet);
-        
-        procesarExcel(json);
+        // Intentamos leer la hoja 'GDPBD' o la primera disponible
+        const sheet = workbook.Sheets['GDPBD'] || workbook.Sheets[workbook.SheetNames[0]];
+        procesar(XLSX.utils.sheet_to_json(sheet));
       };
       reader.readAsArrayBuffer(file);
     });
 
-    // 2. Función para normalizar nombres de columnas (ignora tildes y mayúsculas)
-    function getVal(obj, keyName) {
-      const normalizedKey = keyName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      for (let k in obj) {
-        let currentK = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        if (currentK === normalizedKey) return obj[k];
-      }
-      return null;
+    function getVal(obj, key) {
+      const norm = k => k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const target = norm(key);
+      for (let k in obj) { if (norm(k) === target) return obj[k]; }
+      return "";
     }
 
-    // 3. Procesamiento de Datos
-    function procesarExcel(data) {
-      const tempMap = {};
+    function procesar(data) {
+      const map = {};
 
       data.forEach(row => {
-        const cod = (getVal(row, 'Codigo') || getVal(row, 'Código') || '').toString().trim();
-        const desc = (getVal(row, 'Descripcion') || getVal(row, 'Descripción') || 'S/D').toString().trim();
-        
-        // Columnas específicas de tu archivo
-        const calle = (getVal(row, 'Calle') || '').toString().trim();
-        const est = (getVal(row, 'Estanteria') || getVal(row, 'Estantería') || '').toString().trim();
-        const fila = (getVal(row, 'Fila') || '').toString().trim();
-        const pos = (getVal(row, 'Posicion') || getVal(row, 'Posición') || '').toString().trim();
-
-        // Creamos una etiqueta de ubicación legible
-        const ubicacion = `${calle} ${est} ${fila} ${pos}`.replace(/\s+/g, ' ').trim() || 'SIN UBICACIÓN';
-
-        const entrada = parseFloat(getVal(row, 'Entrada de Stock')) || 0;
-        const salida = parseFloat(getVal(row, 'Salida de Stock')) || 0;
-        const balance = entrada - salida;
-
+        const cod = getVal(row, 'Código') || getVal(row, 'Codigo');
         if (!cod) return;
 
-        // Agrupamos por Código + Ubicación
-        const idUnico = `${cod}-${ubicacion}`;
+        const calle = getVal(row, 'Calle') || '-';
+        const est = getVal(row, 'Estantería') || getVal(row, 'Estanteria') || '-';
+        const fila = getVal(row, 'Fila') || '-';
+        const pos = getVal(row, 'Posición') || getVal(row, 'Posicion') || '-';
+        
+        const ent = parseFloat(getVal(row, 'Entrada de Stock')) || 0;
+        const sal = parseFloat(getVal(row, 'Salida de Stock')) || 0;
 
-        if (!tempMap[idUnico]) {
-          tempMap[idUnico] = {
+        // La clave única ahora considera cada parte de la ubicación
+        const key = `${cod}|${calle}|${est}|${fila}|${pos}`;
+
+        if (!map[key]) {
+          map[key] = {
             codigo: cod,
-            descripcion: desc,
-            ubicacion: ubicacion,
-            estanteria: est,
+            desc: getVal(row, 'Descripción') || getVal(row, 'Descripcion'),
+            calle, est, fila, pos,
             stock: 0
           };
         }
-        tempMap[idUnico].stock += balance;
+        map[key].stock += (ent - sal);
       });
 
-      // Solo mostramos items que tengan stock diferente a 0
-      datosOriginales = Object.values(tempMap).filter(item => item.stock !== 0);
-      renderizar(datosOriginales);
+      datosOriginales = Object.values(map).filter(i => i.stock !== 0);
+      render(datosOriginales);
     }
 
-    // 4. Renderizado de Interfaz
-    function renderizar(lista) {
+    function render(lista) {
       const tbody = document.querySelector('#resultTable tbody');
       tbody.innerHTML = '';
       
-      let totalStock = 0;
-      let estanteriasUnicas = new Set();
+      let totalS = 0, calles = new Set(), racks = new Set();
 
-      lista.forEach(item => {
-        totalStock += item.stock;
-        if(item.estanteria) estanteriasUnicas.add(item.estanteria);
+      lista.forEach(i => {
+        totalS += i.stock;
+        if(i.calle !== '-') calles.add(i.calle);
+        if(i.est !== '-') racks.add(i.est);
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td><strong>${item.codigo}</strong></td>
-          <td>${item.descripcion}</td>
-          <td><span class="ubicacion-badge">${item.ubicacion}</span></td>
-          <td class="stock-badge" style="color: ${item.stock > 0 ? '#04847c' : '#d9534f'}">${item.stock}</td>
+          <td><strong>${i.codigo}</strong></td>
+          <td>${i.desc}</td>
+          <td><span class="badge-loc">${i.calle}</span></td>
+          <td><span class="badge-loc">${i.est}</span></td>
+          <td>${i.fila}</td>
+          <td>${i.pos}</td>
+          <td style="font-weight:bold; color:var(--primary-color)">${i.stock}</td>
         `;
         tbody.appendChild(tr);
       });
 
-      // Actualizar Contadores
       document.getElementById('totalItems').textContent = lista.length;
-      document.getElementById('totalStock').textContent = Math.round(totalStock);
-      document.getElementById('totalRacks').textContent = estanteriasUnicas.size;
-
-      // Actualizar Gráfico (Top 10)
-      const top10 = [...lista].sort((a,b) => b.stock - a.stock).slice(0, 10);
-      actualizarGrafico(top10);
+      document.getElementById('totalStock').textContent = Math.round(totalS);
+      document.getElementById('countCalles').textContent = calles.size;
+      document.getElementById('countRacks').textContent = racks.size;
     }
 
-    // 5. Buscador en tiempo real
     function buscar() {
-      const term = document.getElementById('searchInput').value.toLowerCase();
-      const filtrados = datosOriginales.filter(i => 
-        i.codigo.toLowerCase().includes(term) || 
-        i.descripcion.toLowerCase().includes(term) ||
-        i.ubicacion.toLowerCase().includes(term)
+      const t = document.getElementById('searchInput').value.toLowerCase();
+      const f = datosOriginales.filter(i => 
+        i.codigo.toString().toLowerCase().includes(t) || 
+        i.desc.toLowerCase().includes(t) ||
+        i.calle.toLowerCase().includes(t)
       );
-      renderizar(filtrados);
-    }
-
-    // 6. Gráfico
-    function actualizarGrafico(items) {
-      const ctx = document.getElementById('stockChart').getContext('2d');
-      if (chart) chart.destroy();
-
-      chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: items.map(i => i.codigo),
-          datasets: [{
-            label: 'Stock (Top 10 Artículos)',
-            data: items.map(i => i.stock),
-            backgroundColor: '#04847c',
-            borderRadius: 5
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } }
-        }
-      });
+      render(f);
     }
   </script>
 </body>
