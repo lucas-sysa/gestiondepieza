@@ -58,6 +58,7 @@
       background: #62d3c0;
     }
     .readonly-bg { background-color: #f9f9f9; }
+    p { margin: 5px 0; font-size: 0.9em; color: #666; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -68,18 +69,13 @@
       <input placeholder="Escanear tarjeta del operador" id="usuario" required autofocus />
       <input placeholder="Código de pieza" id="codigo" required />
       <input placeholder="Descripción" id="descripcion" class="readonly-bg" readonly />
-      
-      <div class="grid-ubicacion">
-        <input placeholder="Orden" id="orden" />
-        <input placeholder="Color" id="color" />
-      </div>
 
       <div class="grid-ubicacion">
         <input type="number" placeholder="Entrada stock" id="entrada" />
         <input type="number" placeholder="Salida stock" id="salida" />
       </div>
 
-      <p style="margin: 5px 0; font-size: 0.9em; color: #666;">Ubicación:</p>
+      <p>Ubicación Geográfica:</p>
       <div class="grid-ubicacion">
         <input placeholder="Calle" id="calle" required />
         <input placeholder="Estantería" id="rack" required />
@@ -87,6 +83,7 @@
         <input placeholder="Posición" id="posicion" required />
       </div>
 
+      <p>Destino y Estado:</p>
       <select id="box" required>
         <option value="">Seleccionar línea</option>
         <option value="Pañol-GDP">Pañol-GDP</option>
@@ -495,17 +492,14 @@
 "907435-0106":"pegatina 3M en la cubierta del faro delantero",
 "999106-0001":"conjunto del tanque de combustible",
     };
-
     document.getElementById('codigo').addEventListener('input', function () {
       const codigoIngresado = this.value.trim().toUpperCase();
-      const descripcion = productos[codigoIngresado];
-      document.getElementById('descripcion').value = descripcion || '';
+      document.getElementById('descripcion').value = productos[codigoIngresado] || '';
     });
 
     document.getElementById('form').addEventListener('submit', e => {
       e.preventDefault();
       const btn = document.getElementById('btnEnviar');
-      
       const entradaValue = entradaInput.value.trim();
       const salidaValue = salidaInput.value.trim();
 
@@ -528,8 +522,6 @@
         usuario: document.getElementById('usuario').value,
         codigo: document.getElementById('codigo').value,
         descripcion: document.getElementById('descripcion').value,
-        orden: document.getElementById('orden').value || "-",
-        color: document.getElementById('color').value || "-",
         entrada: entradaValue || "0",
         salida: salidaFinal,
         calle: document.getElementById('calle').value,
