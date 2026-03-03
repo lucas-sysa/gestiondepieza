@@ -6,7 +6,6 @@
   <title>Stock Detallado - La Emilia</title>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
   <style>
@@ -15,7 +14,6 @@
       --accent-color: #355fb4;
       --bg-light: #f3f4f7;
       --bg-white: #ffffff;
-      --text-color: #333;
       --border-radius: 12px;
     }
 
@@ -30,6 +28,7 @@
       position: fixed;
       top: 0; left: 0; right: 0;
       background-color: var(--primary-color);
+      color: white;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -48,7 +47,7 @@
 
     #dashboard {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 15px;
       margin-bottom: 25px;
     }
@@ -61,56 +60,53 @@
       text-align: center;
     }
 
-    .dash-card span { display: block; font-size: 1.5rem; font-weight: bold; color: var(--accent-color); }
+    .dash-card span { display: block; font-size: 1.6rem; font-weight: bold; color: var(--accent-color); }
 
     .search-box {
       width: 100%;
-      padding: 12px;
-      border: 1px solid #ddd;
+      padding: 15px;
+      border: 2px solid #eee;
       border-radius: 8px;
       margin-bottom: 20px;
+      font-size: 1rem;
+      box-sizing: border-box;
     }
 
-    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    table { width: 100%; border-collapse: collapse; }
     th { background: #f1f1f1; color: var(--primary-color); padding: 12px; text-align: left; border-bottom: 2px solid #ddd; }
-    td { padding: 10px; border-bottom: 1px solid #eee; }
-    tr:hover { background-color: #f9f9f9; }
+    td { padding: 12px; border-bottom: 1px solid #eee; }
 
     .badge-loc {
       background: #eef2f1;
       color: #04847c;
-      padding: 2px 6px;
+      padding: 4px 8px;
       border-radius: 4px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    @media print {
-      .menu-bar, input, .dash-card, canvas { display: none; }
-      .container { width: 100%; max-width: 100%; box-shadow: none; }
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
 
   <div class="menu-bar">
-    <div style="color:white; font-weight:bold;">LA EMILIA - SISTEMA DE RACKS</div>
-    <button onclick="window.print()" style="cursor:pointer; padding:5px 15px;">Imprimir</button>
+    <div style="font-size: 1.2rem; font-weight: bold;">LA EMILIA - STOCK REAL</div>
+    <button onclick="window.print()" style="padding: 8px 15px; cursor: pointer;">Imprimir</button>
   </div>
 
   <div class="container">
     <h2>Control de Inventario por Ubicación</h2>
 
-    <input type="file" id="fileInput" accept=".xlsx,.xls" style="margin-bottom: 20px;"/>
+    <div style="background: #f0f7f6; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px dashed #04847c;">
+      <label><strong>Paso 1: Cargue su archivo Excel</strong></label><br><br>
+      <input type="file" id="fileInput" accept=".xlsx,.xls" />
+    </div>
 
     <div id="dashboard">
       <div class="dash-card"><strong>Items</strong><span id="totalItems">0</span></div>
       <div class="dash-card"><strong>Stock Total</strong><span id="totalStock">0</span></div>
-      <div class="dash-card"><strong>Calles</strong><span id="countCalles">0</span></div>
-      <div class="dash-card"><strong>Estanterías</strong><span id="countRacks">0</span></div>
+      <div class="dash-card"><strong>Ubicaciones</strong><span id="countLoc">0</span></div>
     </div>
 
-    <input type="text" id="searchInput" class="search-box" placeholder="Filtrar por código, descripción o calle..." oninput="buscar()">
+    <input type="text" id="searchInput" class="search-box" placeholder="Buscar..." oninput="buscar()">
 
     <table id="resultTable">
       <thead>
@@ -121,11 +117,11 @@
           <th>Estantería</th>
           <th>Fila</th>
           <th>Posición</th>
-          <th>Stock</th>
+          <th>Stock Actual</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td colspan="7" style="text-align:center; padding:30px;">Cargue el archivo para ver el desglose</td></tr>
+        <tr><td colspan="7" style="text-align:center; padding:50px; color: #999;">Esperando archivo...</td></tr>
       </tbody>
     </table>
   </div>
@@ -135,93 +131,110 @@
 
     document.getElementById('fileInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
+      if (!file) return;
+
       const reader = new FileReader();
       reader.onload = function(e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        // Intentamos leer la hoja 'GDPBD' o la primera disponible
-        const sheet = workbook.Sheets['GDPBD'] || workbook.Sheets[workbook.SheetNames[0]];
-        procesar(XLSX.utils.sheet_to_json(sheet));
+        const data = e.target.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheetName = workbook.SheetNames.find(n => n.includes('GDPBD')) || workbook.SheetNames[0];
+        const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+        procesar(json);
       };
-      reader.readAsArrayBuffer(file);
+      reader.readAsBinaryString(file);
     });
 
-    function getVal(obj, key) {
-      const norm = k => k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      const target = norm(key);
-      for (let k in obj) { if (norm(k) === target) return obj[k]; }
+    // REPARADOR DE TEXTO (Mantiene el resto de la información)
+    function corregirTexto(texto) {
+      if (!texto) return "-";
+      let t = texto.toString().trim();
+      
+      // Reemplaza los símbolos rotos específicamente por la letra con tilde
+      // pero conserva lo que haya antes y después.
+      t = t.replace(/Estanter.a/gi, "Estantería");
+      t = t.replace(/Posici.n/gi, "Posición");
+      
+      // Caso genérico para cualquier rombo con ? que haya quedado
+      return t.replace(/\ufffd/g, "ó");
+    }
+
+    function getVal(fila, nombreCol) {
+      const norm = s => s.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      const buscado = norm(nombreCol);
+      for (let key in fila) {
+        if (norm(key) === buscado) return fila[key];
+      }
       return "";
     }
 
     function procesar(data) {
-      const map = {};
+      const consolidado = {};
 
-      data.forEach(row => {
-        const cod = getVal(row, 'Código') || getVal(row, 'Codigo');
+      data.forEach(fila => {
+        const cod = getVal(fila, 'Código') || getVal(fila, 'Codigo');
         if (!cod) return;
 
-        const calle = getVal(row, 'Calle') || '-';
-        const est = getVal(row, 'Estantería') || getVal(row, 'Estanteria') || '-';
-        const fila = getVal(row, 'Fila') || '-';
-        const pos = getVal(row, 'Posición') || getVal(row, 'Posicion') || '-';
-        
-        const ent = parseFloat(getVal(row, 'Entrada de Stock')) || 0;
-        const sal = parseFloat(getVal(row, 'Salida de Stock')) || 0;
+        // Extraer valores y aplicar corrección
+        const calle = corregirTexto(getVal(fila, 'Calle'));
+        const est = corregirTexto(getVal(fila, 'Estantería') || getVal(fila, 'Estanteria'));
+        const niv = getVal(fila, 'Fila') || "-";
+        const pos = corregirTexto(getVal(fila, 'Posición') || getVal(fila, 'Posicion'));
+        const desc = getVal(fila, 'Descripción') || getVal(fila, 'Descripcion');
 
-        // La clave única ahora considera cada parte de la ubicación
-        const key = `${cod}|${calle}|${est}|${fila}|${pos}`;
+        const ent = parseFloat(getVal(fila, 'Entrada de Stock')) || 0;
+        const sal = parseFloat(getVal(fila, 'Salida de Stock')) || 0;
 
-        if (!map[key]) {
-          map[key] = {
+        const llave = `${cod}|${calle}|${est}|${niv}|${pos}`;
+
+        if (!consolidado[llave]) {
+          consolidatedLlave = {
             codigo: cod,
-            desc: getVal(row, 'Descripción') || getVal(row, 'Descripcion'),
-            calle, est, fila, pos,
+            desc: desc,
+            calle, est, niv, pos,
             stock: 0
           };
+          consolidado[llave] = consolidatedLlave;
         }
-        map[key].stock += (ent - sal);
+        consolidado[llave].stock += (ent + sal);
       });
 
-      datosOriginales = Object.values(map).filter(i => i.stock !== 0);
+      datosOriginales = Object.values(consolidado).filter(i => Math.abs(i.stock) > 0);
       render(datosOriginales);
     }
 
     function render(lista) {
       const tbody = document.querySelector('#resultTable tbody');
       tbody.innerHTML = '';
+      let totalS = 0;
       
-      let totalS = 0, calles = new Set(), racks = new Set();
-
       lista.forEach(i => {
         totalS += i.stock;
-        if(i.calle !== '-') calles.add(i.calle);
-        if(i.est !== '-') racks.add(i.est);
-
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td><strong>${i.codigo}</strong></td>
           <td>${i.desc}</td>
           <td><span class="badge-loc">${i.calle}</span></td>
           <td><span class="badge-loc">${i.est}</span></td>
-          <td>${i.fila}</td>
+          <td>${i.niv}</td>
           <td>${i.pos}</td>
-          <td style="font-weight:bold; color:var(--primary-color)">${i.stock}</td>
+          <td style="font-weight:bold; color:#04847c; font-size:1.1rem">${i.stock}</td>
         `;
         tbody.appendChild(tr);
       });
 
       document.getElementById('totalItems').textContent = lista.length;
       document.getElementById('totalStock').textContent = Math.round(totalS);
-      document.getElementById('countCalles').textContent = calles.size;
-      document.getElementById('countRacks').textContent = racks.size;
+      document.getElementById('countLoc').textContent = new Set(lista.map(x => x.calle + x.est)).size;
     }
 
     function buscar() {
-      const t = document.getElementById('searchInput').value.toLowerCase();
+      const term = document.getElementById('searchInput').value.toLowerCase();
       const f = datosOriginales.filter(i => 
-        i.codigo.toString().toLowerCase().includes(t) || 
-        i.desc.toLowerCase().includes(t) ||
-        i.calle.toLowerCase().includes(t)
+        i.codigo.toString().toLowerCase().includes(term) || 
+        i.desc.toLowerCase().includes(term) ||
+        i.calle.toLowerCase().includes(term) ||
+        i.est.toLowerCase().includes(term) ||
+        i.pos.toLowerCase().includes(term)
       );
       render(f);
     }
