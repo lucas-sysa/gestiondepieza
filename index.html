@@ -67,13 +67,6 @@
 
       <select id="calidad" required>
         <option value="">Seleccionar Calidad</option>
-        <option>L21</option>
-        <option>L14</option>
-        <option>L12</option>
-        <option>L09</option>
-        <option>L06</option>
-        <option>Reparaciones</option>
-        <option>Pintura</option>
         <option value="OK">OK</option>
         <option value="Scrap">Scrap</option>
         <option value="reparaciones-pintura">Reparaciones-Pintura</option>
@@ -112,6 +105,7 @@
     entradaInput.addEventListener('input', () => { salidaInput.disabled = entradaInput.value !== ""; });
     salidaInput.addEventListener('input', () => { entradaInput.disabled = salidaInput.value !== ""; });
 
+    // Los productos aquí ya usan tildes estándar en el objeto JS
     const productos = {
 "100004-0001":"tubo de admisión",
 "110000-2424":"MOTOR",
@@ -529,4 +523,3 @@
   </script>
 </body>
 </html>
-
