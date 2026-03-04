@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Gestión de Piezas v2</title>
   <style>
+    /* Estilos originales mantenidos */
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
       background: linear-gradient(135deg, #74ebd5, #ACB6E5);
@@ -35,6 +36,8 @@
     button:hover { background: #62d3c0; }
     .readonly-bg { background-color: #f9f9f9; }
     p { margin: 5px 0; font-size: 0.9em; color: #666; font-weight: bold; }
+    /* Nuevo estilo para resaltar el input de ubicación */
+    .ubicacion-unica { border: 2px solid #74ebd5; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -52,12 +55,7 @@
       </div>
 
       <p>Ubicación Geográfica:</p>
-      <div class="grid-ubicacion">
-        <input placeholder="Calle" id="calle" required />
-        <input placeholder="Estantería" id="rack" required />
-        <input placeholder="Fila" id="fila" required />
-        <input placeholder="Posición" id="posicion" required />
-      </div>
+      <input placeholder="Calle-Rack-Fila-Pos (ej: A-02-01-05)" id="ubicacion_full" class="ubicacion-unica" required />
 
       <p>Destino y Estado:</p>
       <select id="box" required>
@@ -66,16 +64,15 @@
       </select>
 
       <select id="calidad" required>
-        <option value="">Seleccionar</option>
+        <option value="">Seleccionar Calidad</option>
         <option value="OK">OK</option>
+        <option value="Scrap">Scrap</option>
         <option>L21</option>
         <option>L14</option>
         <option>L12</option>
         <option>L09</option>
         <option>L06</option>
-        <option>Calidad</option>
         <option>Reparaciones</option>
-        <option value="Scrap">Scrap</option>
         <option value="reparaciones-pintura">Reparaciones-Pintura</option>
       </select>
 
@@ -112,7 +109,6 @@
     entradaInput.addEventListener('input', () => { salidaInput.disabled = entradaInput.value !== ""; });
     salidaInput.addEventListener('input', () => { entradaInput.disabled = salidaInput.value !== ""; });
 
-    // Los productos aquí ya usan tildes estándar en el objeto JS
     const productos = {
 "100004-0001":"tubo de admisión",
 "110000-2424":"MOTOR",
@@ -475,6 +471,7 @@
 "907435-0106":"pegatina 3M en la cubierta del faro delantero",
 "999106-0001":"conjunto del tanque de combustible",
     };
+
     document.getElementById('codigo').addEventListener('input', function () {
       const codigoIngresado = this.value.trim().toUpperCase();
       document.getElementById('descripcion').value = productos[codigoIngresado] || '';
@@ -484,6 +481,16 @@
       e.preventDefault();
       const btn = document.getElementById('btnEnviar');
       
+      // Lógica de validación de ubicación
+      const ubiValue = document.getElementById('ubicacion_full').value.trim();
+      // Dividimos por cualquier caracter que no sea letra o número (guiones, puntos, espacios)
+      const partes = ubiValue.split(/[-. /]+/);
+
+      if (partes.length < 4) {
+        alert("Por favor ingresa la ubicación completa: Calle, Estantería, Fila y Posición.");
+        return;
+      }
+
       let salidaFinal = "0";
       if (salidaInput.value) {
         salidaFinal = `-${Math.abs(parseInt(salidaInput.value))}`;
@@ -500,10 +507,11 @@
         descripcion: document.getElementById('descripcion').value,
         entrada: entradaInput.value || "0",
         salida: salidaFinal,
-        calle: document.getElementById('calle').value,
-        estanteria: document.getElementById('rack').value,
-        fila: document.getElementById('fila').value,
-        posicion: document.getElementById('posicion').value,
+        // Aquí mapeamos el input único a los 4 campos que espera tu Script
+        calle: partes[0],
+        estanteria: partes[1],
+        fila: partes[2],
+        posicion: partes[3],
         linea: document.getElementById('box').value,
         observaciones: document.getElementById('observaciones').value,
         calidad: document.getElementById('calidad').value
@@ -530,4 +538,3 @@
   </script>
 </body>
 </html>
-
