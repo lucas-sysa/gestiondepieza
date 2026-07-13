@@ -3,26 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Handheld - Tareas de Ingreso</title>
+  <title>Handheld - Control de Stock Inteligente</title>
   <style>
     :root { --primary: #023047; --success: #2a9d8f; --error: #e63946; --bg: #f8f9fa; }
     body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; justify-content: center; }
     .container { width: 100%; max-width: 400px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    h2 { text-align: center; color: var(--primary); margin-top: 0; font-size: 1.4rem; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
+    h2 { text-align: center; color: var(--primary); margin-top: 0; font-size: 1.3rem; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
     .form-group { margin-bottom: 12px; }
     label { display: block; font-size: 12px; font-weight: 600; color: var(--primary); margin-bottom: 4px; }
-    input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; background-color: #fff; }
+    input, select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; background-color: #fff; }
     input:disabled, select:disabled { background-color: #e9ecef; color: #495057; }
     
     .valido { border-color: var(--success) !important; background-color: #f4fbf7; }
     .bloqueado { border-color: var(--error) !important; background-color: #fff5f5; }
     .mensaje-ok { font-size: 11px; font-weight: bold; color: var(--success); margin-top: 3px; display: none; }
     .mensaje-ok.show { display: block; }
+    .info-stock { font-size: 12px; color: #555; background: #fff3cd; padding: 6px; border-radius: 4px; margin-top: 5px; font-weight: bold; display: none;}
 
-    .tarea-box { background-color: #e8f1f5; border: 1px dashed #023047; padding: 10px; border-radius: 4px; margin-bottom: 12px; }
+    .modo-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; background: #e8f1f5; padding: 8px; border-radius: 4px;}
+    .modo-btn { padding: 8px; text-align: center; font-size: 12px; font-weight: bold; background: #ddd; border-radius: 4px; cursor: pointer; border: 1px solid #bbb;}
+    .modo-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    button[type="submit"] { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
     button:disabled { background: #ccc; cursor: not-allowed; }
     .status { text-align: center; padding: 10px; margin-top: 10px; border-radius: 4px; display: none; font-weight: bold; }
     .success { display: block; background: #e8f5e9; color: #2e7d32; }
@@ -33,8 +36,8 @@
 <body>
 
 <div class="container">
-  <h2>Handheld MP - Tareas Dirigidas</h2>
-  <div id="syncBanner" class="sync-banner">🔄 Sincronizando tareas pendientes del Sheet...</div>
+  <h2>Handheld MP - Almacén</h2>
+  <div id="syncBanner" class="sync-banner">🔄 Sincronizando existencias del depósito...</div>
 
   <form id="mpForm">
     <div class="form-group">
@@ -43,88 +46,104 @@
       <div id="msgOperador" class="mensaje-ok"></div>
     </div>
 
-    <div class="form-group tarea-box">
-      <label for="tareaSeleccionada" style="color:#023047;">📋 Seleccionar Tarea Pendiente</label>
-      <select id="tareaSeleccionada" required disabled>
-        <option value="">-- No hay tareas o falta Legajo --</option>
+    <label>Tipo de Tarea / Flujo</label>
+    <div class="modo-box">
+      <div id="btnModoTarea" class="modo-btn active" onclick="cambiarModo('TAREA')">📋 Por Asignación</div>
+      <div id="btnModoLibre" class="modo-btn" onclick="cambiarModo('LIBRE')">🔍 Salida / Búsqueda Libre</div>
+    </div>
+
+    <div class="form-group" id="wrapperTarea">
+      <label for="tareaSeleccionada">Seleccionar Tarea Planificada</label>
+      <select id="tareaSeleccionada" disabled>
+        <option value="">-- Ingrese Legajo Primero --</option>
       </select>
+    </div>
+
+    <div class="form-group" id="wrapperFiltroCodigo" style="display: none;">
+      <label for="buscarCodigo">Escanear / Escribir Código MP</label>
+      <input type="text" id="buscarCodigo" placeholder="Escriba código y presione Enter" autocomplete="off">
+      <div id="infoSugerenciaStock" class="info-stock"></div>
     </div>
     
     <div class="grid-2">
       <div class="form-group">
-        <label Pisando>Código MP Asignado</label>
-        <input type="text" id="materiaprima" readonly required placeholder="Auto desde Tarea">
+        <label>Código MP</label>
+        <input type="text" id="materiaprima" readonly required placeholder="Código">
         <div id="msgMP" class="mensaje-ok"></div>
       </div>
       <div class="form-group">
         <label for="cantidad">Cantidad</label>
-        <input type="number" id="cantidad" readonly required min="1">
+        <input type="number" id="cantidad" required min="1" disabled>
       </div>
     </div>
 
     <div class="grid-2">
       <div class="form-group">
-        <label for="rack">Calle / Rack Destino</label>
-        <input type="text" id="rack" readonly required placeholder="Auto desde Tarea">
+        <label for="rack">Calle / Rack</label>
+        <input type="text" id="rack" readonly required placeholder="Ubicación">
       </div>
       <div class="form-group">
-        <label for="box">Posición / Box Destino</label>
-        <input type="text" id="box" readonly required placeholder="Auto desde Tarea">
+        <label for="box">Posición / Box</label>
+        <input type="text" id="box" readonly required placeholder="Ubicación">
       </div>
     </div>
 
     <div class="form-group">
-      <label for="tipo_movimiento">Movimiento</label>
-      <select id="tipo_movimiento" disabled>
-        <option value="ENTRADA">Entrada de Stock</option>
-      </select>
+      <label>Movimiento</label>
+      <input type="text" id="movimientoTexto" readonly value="ENTRADA" style="font-weight: bold; text-align: center; background: #eee;">
     </div>
 
-    <button type="submit" id="btnEnviar" disabled>COMPLETAR E INGRESAR TAREA</button>
+    <button type="submit" id="btnEnviar" disabled>REGISTRAR OPERACIÓN</button>
   </form>
   <div id="statusBox" class="status"></div>
 </div>
 
 <script>
-  // REEMPLAZAR AQUÍ CON TU URL /EXEC DE GOOGLE APPS SCRIPT
+  // REEMPLAZAR CON TU URL /EXEC DE GOOGLE APPS SCRIPT
   const URL_API = "https://script.google.com/macros/s/AKfycbwQ90PLaA1LuPhtkQIbbnTR745EGp2OSs297fFMZNlKzS4-p33sEF4Xj0--_Fbj2q_g/exec";
 
   let LISTA_USUARIOS = [];
+  let LISTA_MATERIALES = [];
   let LISTA_TAREAS = [];
+  let MAPA_STOCK = {};
+  let MODO_ACTUAL = "TAREA"; // TAREA o LIBRE
 
   const inputOp = document.getElementById('operador');
   const selectTarea = document.getElementById('tareaSeleccionada');
+  const inputBuscarCodigo = document.getElementById('buscarCodigo');
+  
   const inputMP = document.getElementById('materiaprima');
   const inputCantidad = document.getElementById('cantidad');
   const inputRack = document.getElementById('rack');
   const inputBox = document.getElementById('box');
+  const movimientoTexto = document.getElementById('movimientoTexto');
   
   const msgOp = document.getElementById('msgOperador');
   const msgMP = document.getElementById('msgMP');
+  const infoSugerenciaStock = document.getElementById('infoSugerenciaStock');
   const btnEnviar = document.getElementById('btnEnviar');
   const syncBanner = document.getElementById('syncBanner');
 
-  // AL ARRANCAR: TRAER MAESTROS Y TAREAS PENDIENTES
   window.addEventListener('DOMContentLoaded', async () => {
     try {
       const respuesta = await fetch(URL_API + "?cargarMaestros=true");
-      const datosMaestros = await respuesta.json();
+      const datos = await respuesta.json();
       
-      LISTA_USUARIOS = datosMaestros.usuarios || [];
-      LISTA_TAREAS = datosMaestros.tareas || [];
+      LISTA_USUARIOS = datos.usuarios || [];
+      LISTA_MATERIALES = datos.materiales || [];
+      LISTA_TAREAS = datos.tareas || [];
+      MAPA_STOCK = datos.mapaStock || {};
       
       syncBanner.style.display = 'none';
       inputOp.disabled = false;
       inputOp.focus();
-      
     } catch (err) {
       syncBanner.style.backgroundColor = '#f8d7da';
       syncBanner.style.color = '#721c24';
-      syncBanner.textContent = '❌ Error de red: No se pudieron bajar las tareas.';
+      syncBanner.textContent = '❌ Error: No se conectó con el almacén.';
     }
   });
 
-  // VALIDACIÓN DE OPERADOR HABILITA LAS TAREAS
   inputOp.addEventListener('input', () => {
     const val = inputOp.value.trim();
     const buscado = LISTA_USUARIOS.find(u => u.legajo === val);
@@ -133,61 +152,125 @@
       inputOp.className = "valido";
       msgOp.textContent = `✔ Operario: ${buscado.nombre}`;
       msgOp.classList.add('show');
-      
-      // Habilitar selección de tareas pendientes
-      selectTarea.disabled = false;
-      selectTarea.innerHTML = '<option value="">-- Elija la tarea asignada --</option>';
-      
-      if(LISTA_TAREAS.length === 0) {
-        selectTarea.innerHTML = '<option value="">🎉 ¡No hay tareas pendientes!</option>';
-      } else {
-        LISTA_TAREAS.forEach(t => {
-          const opt = document.createElement('option');
-          opt.value = t.id;
-          opt.textContent = `${t.codigo} -> Cant: ${t.cant} (Ir a ${t.rack}-${t.box})`;
-          selectTarea.appendChild(opt);
-        });
-      }
+      actualizarControlesPorModo();
     } else {
       inputOp.className = val ? "bloqueado" : "";
       msgOp.classList.remove('show');
       selectTarea.disabled = true;
-      selectTarea.innerHTML = '<option value="">-- No hay tareas o falta Legajo --</option>';
-      limpiarCamposTarea();
+      inputBuscarCodigo.disabled = true;
+      limpiarCampos();
     }
     evaluarBoton();
   });
 
-  // AL SELECCIONAR LA TAREA SE AUTOCOMPLETA LA PANTALLA
+  function cambiarModo(modo) {
+    if(!inputOp.classList.contains('valido')) return;
+    MODO_ACTUAL = modo;
+    document.getElementById('btnModoTarea').className = "modo-btn" + (modo === 'TAREA' ? " active" : "");
+    document.getElementById('btnModoLibre').className = "modo-btn" + (modo === 'LIBRE' ? " active" : "");
+    limpiarCampos();
+    actualizarControlesPorModo();
+  }
+
+  function actualizarControlesPorModo() {
+    if (MODO_ACTUAL === "TAREA") {
+      document.getElementById('wrapperTarea').style.display = "block";
+      document.getElementById('wrapperFiltroCodigo').style.display = "none";
+      selectTarea.disabled = false;
+      selectTarea.innerHTML = '<option value="">-- Seleccione tarea asignada --</option>';
+      LISTA_TAREAS.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = `[${t.movimiento}] ${t.codigo} (${t.rack}-${t.box})`;
+        selectTarea.appendChild(opt);
+      });
+      inputCantidad.disabled = true;
+    } else {
+      document.getElementById('wrapperTarea').style.display = "none";
+      document.getElementById('wrapperFiltroCodigo').style.display = "block";
+      inputBuscarCodigo.disabled = false;
+      inputBuscarCodigo.focus();
+      movimientoTexto.value = "SALIDA";
+      inputCantidad.disabled = false;
+    }
+    evaluarBoton();
+  }
+
+  // EVENTO MODO ASIGNACIÓN
   selectTarea.addEventListener('change', () => {
-    const tareaId = selectTarea.value;
-    const tarea = LISTA_TAREAS.find(t => t.id === tareaId);
-    
+    const tarea = LISTA_TAREAS.find(t => t.id === selectTarea.value);
     if (tarea) {
       inputMP.value = tarea.codigo;
       inputCantidad.value = tarea.cant;
       inputRack.value = tarea.rack;
       inputBox.value = tarea.box;
-      msgMP.textContent = `✔ ${tarea.desc}`;
+      movimientoTexto.value = tarea.movimiento;
+      const mBase = LISTA_MATERIALES.find(m => m.codigo === tarea.codigo);
+      msgMP.textContent = `✔ ${mBase ? mBase.desc : tarea.desc}`;
       msgMP.classList.add('show');
     } else {
-      limpiarCamposTarea();
+      limpiarCampos();
     }
     evaluarBoton();
   });
 
-  function limpiarCamposTarea() {
+  // EVENTO MODO BÚSQUEDA LIBRE (AL PICAR CÓDIGO)
+  inputBuscarCodigo.addEventListener('change', () => {
+    const codBuscado = inputBuscarCodigo.value.toUpperCase().trim();
+    const mBase = LISTA_MATERIALES.find(m => m.codigo === codBuscado);
+    
+    infoSugerenciaStock.style.display = "none";
+    limpiarCampos();
+    
+    if (mBase) {
+      inputMP.value = mBase.codigo;
+      msgMP.textContent = `✔ ${mBase.desc}`;
+      msgMP.classList.add('show');
+      
+      // Consultar el mapa de stock para ver dónde está guardado
+      const ubicacionesDisponibles = MAPA_STOCK[codBuscado] || [];
+      
+      if (ubicacionesDisponibles.length > 0) {
+        // Tomamos de manera inteligente la primera ubicación donde haya stock disponible
+        const principal = ubicacionesDisponibles[0];
+        inputRack.value = principal.rack;
+        inputBox.value = principal.box;
+        
+        // Armar el cartel descriptivo para el operario
+        let detalle = "📍 Encontrado en:<br>";
+        ubicacionesDisponibles.forEach(u => {
+          detalle += `• ${u.rack} [Box ${u.box}]: Disp. ${u.stock} und.<br>`;
+        });
+        infoSugerenciaStock.innerHTML = detalle;
+        infoSugerenciaStock.style.display = "block";
+        inputCantidad.focus();
+      } else {
+        infoSugerenciaStock.innerHTML = "⚠️ Alerta: El material figura sin stock en ningún sector.";
+        infoSugerenciaStock.style.display = "block";
+      }
+    } else {
+      if(codBuscado) {
+        alert("El código escaneado no existe en el maestro de materiales.");
+        inputBuscarCodigo.value = "";
+      }
+    }
+    evaluarBoton();
+  });
+
+  function limpiarCampos() {
     inputMP.value = ""; inputCantidad.value = ""; inputRack.value = ""; inputBox.value = "";
     msgMP.classList.remove('show');
   }
 
   function evaluarBoton() {
     const opOk = inputOp.classList.contains('valido');
-    const tareaOk = selectTarea.value !== "";
-    btnEnviar.disabled = !(opOk && tareaOk);
+    const datosCargados = inputMP.value !== "" && inputRack.value !== "" && inputCantidad.value > 0;
+    btnEnviar.disabled = !(opOk && datosCargados);
   }
 
-  // ENVÍO DE DATOS POST ORIGINAL MÁS ACTUALIZACIÓN DE ESTADO
+  inputCantidad.addEventListener('input', evaluarBoton);
+
+  // ENVÍO DE DATOS
   document.getElementById('mpForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const statusBox = document.getElementById('statusBox');
@@ -200,8 +283,8 @@
       cantidad: parseInt(inputCantidad.value),
       rack: inputRack.value,
       box: inputBox.value,
-      movimiento: "ENTRADA",
-      idTarea: selectTarea.value // Mandamos el ID para marcar como ingresado en el Excel
+      movimiento: movimientoTexto.value,
+      idTarea: MODO_ACTUAL === "TAREA" ? selectTarea.value : ""
     };
 
     try {
@@ -212,16 +295,25 @@
         body: JSON.stringify(payload)
       });
 
-      statusBox.textContent = "✔ Tarea guardada y removida de pendientes.";
+      statusBox.textContent = "✔ Operación guardada e impactada con éxito.";
       statusBox.className = "status success";
       
-      // Remover la tarea completada de la lista local
-      LISTA_TAREAS = LISTA_TAREAS.filter(t => t.id !== selectTarea.value);
+      // Actualización local de stock para evitar recargas constantes de red
+      const factor = payload.movimiento === "ENTRADA" ? payload.cantidad : -payload.cantidad;
+      if (!MAPA_STOCK[payload.materiaprima]) MAPA_STOCK[payload.materiaprima] = [];
+      let ubiLocal = MAPA_STOCK[payload.materiaprima].find(u => u.rack === payload.rack && u.box === payload.box);
+      if(ubiLocal) ubiLocal.stock += factor;
       
-      // Resetear formulario manteniendo al operario logueado
-      selectTarea.value = "";
-      limpiarCamposTarea();
-      inputOp.dispatchEvent(new Event('input')); // Recarga el select de tareas
+      if(MODO_ACTUAL === "TAREA") {
+        LISTA_TAREAS = LISTA_TAREAS.filter(t => t.id !== selectTarea.value);
+        selectTarea.value = "";
+      } else {
+        inputBuscarCodigo.value = "";
+        infoSugerenciaStock.style.display = "none";
+      }
+      
+      limpiarCampos();
+      inputOp.dispatchEvent(new Event('input'));
     } catch (err) {
       statusBox.textContent = "❌ Error de conexión: " + err.message;
       statusBox.className = "status error";
