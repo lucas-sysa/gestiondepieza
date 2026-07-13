@@ -11,7 +11,7 @@
     h2 { text-align: center; color: var(--primary); margin-top: 0; font-size: 1.4rem; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
     .form-group { margin-bottom: 12px; }
     label { display: block; font-size: 12px; font-weight: 600; color: var(--primary); margin-bottom: 4px; }
-    input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+    input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; background-color: #fff; }
     input:focus, select:focus { border-color: var(--primary); outline: none; }
     
     .valido { border-color: var(--success) !important; background-color: #f4fbf7; }
@@ -43,7 +43,7 @@
 <div class="container">
   <h2>Handheld MP - V2</h2>
   
-  <div id="syncBanner" class="sync-banner">🔄 Sincronizando listas de materiales y usuarios del Sheet...</div>
+  <div id="syncBanner" class="sync-banner">🔄 Sincronizando maestros del depósito desde el Sheet...</div>
 
   <form id="mpForm">
     <div class="form-group">
@@ -68,11 +68,15 @@
     <div class="grid-2">
       <div class="form-group">
         <label for="rack">Calle / Rack</label>
-        <input type="text" id="rack" placeholder="e.g. CALLE 01" required disabled>
+        <select id="rack" required disabled>
+          <option value="">-- Seleccione --</option>
+        </select>
       </div>
       <div class="form-group">
         <label for="box">Posición / Box</label>
-        <input type="text" id="box" placeholder="e.g. P 01" required disabled>
+        <select id="box" required disabled>
+          <option value="">-- Seleccione Rack --</option>
+        </select>
       </div>
     </div>
 
@@ -90,14 +94,17 @@
 </div>
 
 <script>
-  const URL_API = "https://script.google.com/macros/s/AKfycbwQ90PLaA1LuPhtkQIbbnTR745EGp2OSs297fFMZNlKzS4-p33sEF4Xj0--_Fbj2q_g/exec";
+  // REEMPLAZAR AQUÍ CON TU NUEVA URL GENERADA EN APPS SCRIPT
+  const URL_API = "https://script.google.com/macros/s/AKfycbzK2RUUCOesg8XTt3Y67ViDM2RAnDir2TipzBdB2HqrEjrpNHx4YjxR6SscxyJAHx0y/exec";
 
-  // Listas en memoria que se llenarán dinámicamente desde tu Sheet
   let LISTA_USUARIOS = [];
   let LISTA_MATERIALES = [];
+  let LISTA_UBICACIONES = [];
 
   const inputOp = document.getElementById('operador');
   const inputMP = document.getElementById('materiaprima');
+  const selectRack = document.getElementById('rack');
+  const selectBox = document.getElementById('box');
   const msgOp = document.getElementById('msgOperador');
   const msgMP = document.getElementById('msgMP');
   const alertaTeclado = document.getElementById('alertaTeclado');
@@ -106,17 +113,24 @@
 
   let ultimaTeclaTiempo = Date.now();
 
-  // ALBRIR LA APP: DESCARGAR LISTAS EN VIVO DE GOOGLE SHEETS
+  // AL ARRANCAR: CARGAR MAESTROS TOTALES
   window.addEventListener('DOMContentLoaded', async () => {
     try {
-      // Llamada GET especial pidiendo los maestros
       const respuesta = await fetch(URL_API + "?cargarMaestros=true");
       const datosMaestros = await respuesta.json();
       
       LISTA_USUARIOS = datosMaestros.usuarios || [];
       LISTA_MATERIALES = datosMaestros.materiales || [];
+      LISTA_UBICACIONES = datosMaestros.ubicaciones || [];
       
-      // Ocultar banner de carga y habilitar el formulario
+      // Cargar select de Racks sin duplicados
+      const racksUnicos = [...new Set(LISTA_UBICACIONES.map(u => u.rack))].sort();
+      racksUnicos.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r; opt.textContent = r;
+        selectRack.appendChild(opt);
+      });
+
       syncBanner.style.display = 'none';
       document.querySelectorAll('#mpForm input, #mpForm select').forEach(el => el.disabled = false);
       inputOp.focus();
@@ -124,11 +138,33 @@
     } catch (err) {
       syncBanner.style.backgroundColor = '#f8d7da';
       syncBanner.style.color = '#721c24';
-      syncBanner.textContent = '❌ Error de red: No se pudo descargar el catálogo de materiales.';
+      syncBanner.textContent = '❌ Error de red: No se pudo descargar el catálogo maestro.';
     }
   });
 
-  // AUDIO DE FEEDBACK NATIVO
+  // FILTRADO DINÁMICO DE BOXES SEGÚN EL RACK SELECCIONADO
+  selectRack.addEventListener('change', () => {
+    const rackSeleccionado = selectRack.value;
+    selectBox.innerHTML = '<option value="">-- Seleccione --</option>';
+    
+    if (rackSeleccionado) {
+      const boxesFiltrados = LISTA_UBICACIONES
+        .filter(u => u.rack === rackSeleccionado)
+        .map(u => u.box)
+        .sort();
+        
+      boxesFiltrados.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b; opt.textContent = b;
+        selectBox.appendChild(opt);
+      });
+    }
+    evaluarBoton();
+  });
+
+  selectBox.addEventListener('change', evaluarBoton);
+
+  // AUDIO DE FEEDBACK
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   function emitirBeep(esOk) {
     const osc = audioCtx.createOscillator();
@@ -146,7 +182,9 @@
   function evaluarBoton() {
     const opOk = inputOp.classList.contains('valido');
     const mpOk = inputMP.classList.contains('valido');
-    btnEnviar.disabled = !(opOk && mpOk);
+    const rackOk = selectRack.value !== "";
+    const boxOk = selectBox.value !== "";
+    btnEnviar.disabled = !(opOk && mpOk && rackOk && boxOk);
   }
 
   // VALIDACIÓN DE OPERADOR
@@ -164,11 +202,8 @@
     evaluarBoton();
   });
 
-  // ANTI-TECLADO: CONTROL DE VELOCIDAD POR MILISEGUNDOS
-  inputMP.addEventListener('keydown', () => {
-    ultimaTeclaTiempo = Date.now();
-  });
-
+  // ANTI-TECLADO INDUSTRIAL
+  inputMP.addEventListener('keydown', () => { ultimaTeclaTiempo = Date.now(); });
   inputMP.addEventListener('input', (e) => {
     const tiempoDiferencia = Date.now() - ultimaTeclaTiempo;
     const val = inputMP.value.toUpperCase().trim();
@@ -198,7 +233,7 @@
     evaluarBoton();
   });
 
-  // ENVÍO DE DATOS POST ORIGINAL
+  // ENVÍO DE DATOS
   document.getElementById('mpForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const statusBox = document.getElementById('statusBox');
@@ -211,8 +246,8 @@
       operador: inputOp.value,
       materiaprima: inputMP.value.toUpperCase().trim(),
       cantidad: parseInt(document.getElementById('cantidad').value),
-      rack: document.getElementById('rack').value.trim(),
-      box: document.getElementById('box').value.trim(),
+      rack: selectRack.value,
+      box: selectBox.value,
       movimiento: document.getElementById('tipo_movimiento').value
     };
 
