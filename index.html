@@ -11,34 +11,48 @@
     h2 { text-align: center; color: var(--primary); margin-top: 0; font-size: 1.4rem; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
     .form-group { margin-bottom: 12px; }
     label { display: block; font-size: 12px; font-weight: 600; color: var(--primary); margin-bottom: 4px; }
-    input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; transition: all 0.2s; }
-    input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(2,48,71,0.1); }
-    input.error { border-color: var(--error); background: #fff5f5; }
-    input.success { border-color: var(--success); background: #f4fbf9; }
-    .msg { font-size: 11px; margin-top: 2px; display: none; }
-    .msg.show { display: block; }
-    .msg.error { color: var(--error); }
-    .msg.success { color: var(--success); }
-    button { width: 100%; background: var(--primary); color: white; border: none; padding: 10px; border-radius: 4px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-    button:disabled { background: #ccc; cursor: not-allowed; }
-    .status { margin-top: 10px; padding: 8px; border-radius: 4px; text-align: center; font-size: 13px; font-weight: 600; }
-    .status.success { background: #e6f6f4; color: var(--success); }
-    .status.error { background: #fdf2f2; color: var(--error); }
+    input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+    input:focus, select:focus { border-color: var(--primary); outline: none; }
     
-    /* DISEÑO SECCIÓN TAREAS PLANIFICADAS */
+    .valido { border-color: var(--success) !important; background-color: #f4fbf7; }
+    .bloqueado { border-color: var(--error) !important; background-color: #fff5f5; animation: shake 0.2s 2; }
+    .mensaje-alerta { font-size: 11px; font-weight: bold; color: var(--error); margin-top: 3px; display: none; }
+    .mensaje-alerta.show { display: block; }
+    .mensaje-ok { font-size: 11px; font-weight: bold; color: var(--success); margin-top: 3px; display: none; }
+    .mensaje-ok.show { display: block; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .status { text-align: center; padding: 10px; margin-top: 10px; border-radius: 4px; display: none; font-weight: bold; }
+    .status.success { display: block; background: #e8f5e9; color: #2e7d32; }
+    .status.error { display: block; background: #ffebee; color: #c62828; }
+
+    .sync-banner { background: #fff3cd; color: #856404; text-align: center; padding: 6px; font-size: 11px; font-weight: bold; border-radius: 4px; margin-bottom: 10px; }
+    
+    /* SECCIÓN DE TAREAS PLANIFICADAS */
     .tarea-box { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 10px; border-radius: 6px; margin-bottom: 12px; }
     .tarea-box select { background: #ffffff; }
     .info-tarea { font-size: 11px; color: #475569; margin-top: 5px; line-height: 1.4; display: none; }
+
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+      100% { transform: translateX(0); }
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h2>Handheld - Registro MP</h2>
+  <h2>Handheld MP - V2</h2>
   
+  <div id="syncBanner" class="sync-banner">🔄 Sincronizando listas de materiales y usuarios del Sheet...</div>
+
   <div class="tarea-box">
     <label for="selectTarea">📋 Seleccionar Tarea Planificada:</label>
-    <select id="selectTarea">
+    <select id="selectTarea" disabled>
       <option value="">-- Cargar de forma Manual --</option>
     </select>
     <div id="infoTarea" class="info-tarea"></div>
@@ -46,54 +60,63 @@
 
   <form id="mpForm">
     <div class="form-group">
-      <label for="operador">Operador (Legajo):</label>
-      <input type="text" id="operador" placeholder="Ej: 1024" required inputmode="numeric">
-      <div id="msgOp" class="msg"></div>
+      <label for="operador">Legajo Operador</label>
+      <input type="number" id="operador" required autofocus autocomplete="off" disabled>
+      <div id="msgOperador" class="mensaje-ok"></div>
+    </div>
+    
+    <div class="grid-2">
+      <div class="form-group">
+        <label for="materiaprima">Código MP (¡SÓLO ESCÁNER!)</label>
+        <input type="text" id="materiaprima" required autocomplete="off" style="text-transform:uppercase" placeholder="Gatille código" disabled>
+        <div id="alertaTeclado" class="mensaje-alerta">⚠️ Bloqueado: Use el lector de la handheld</div>
+        <div id="msgMP" class="mensaje-ok"></div>
+      </div>
+      <div class="form-group">
+        <label for="cantidad">Cantidad</label>
+        <input type="number" id="cantidad" required min="1" value="1" disabled>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="form-group">
+        <label for="rack">Calle / Rack</label>
+        <input type="text" id="rack" placeholder="e.g. CALLE 01" required disabled maxlength="20">
+      </div>
+      <div class="form-group">
+        <label for="box">Posición / Box</label>
+        <input type="text" id="box" placeholder="e.g. P 01" required disabled maxlength="20">
+      </div>
     </div>
 
     <div class="form-group">
-      <label for="materiaprima">Código Materia Prima:</label>
-      <input type="text" id="materiaprima" placeholder="Escanee o digite código" required autocomplete="off">
-      <div id="msgMP" class="msg"></div>
-    </div>
-
-    <div class="form-group">
-      <label for="cantidad">Cantidad:</label>
-      <input type="number" id="cantidad" value="1" min="1" required>
-    </div>
-
-    <div class="form-group">
-      <label for="tipo_movimiento">Tipo de Movimiento:</label>
-      <select id="tipo_movimiento">
-        <option value="ENTRADA">ENTRADA (Suma Stock)</option>
-        <option value="SALIDA">SALIDA (Resta Stock)</option>
+      <label for="tipo_movimiento">Movimiento</label>
+      <select id="tipo_movimiento" disabled>
+        <option value="ENTRADA">Entrada de Stock</option>
+        <option value="SALIDA">Salida de Stock</option>
       </select>
     </div>
 
-    <div class="form-group">
-      <label for="rack">Rack (Posición):</label>
-      <input type="text" id="rack" placeholder="Ej: A" required maxlength="5">
-    </div>
-
-    <div class="form-group">
-      <label for="box">Box (Celda):</label>
-      <input type="text" id="box" placeholder="Ej: 12" required maxlength="5">
-    </div>
-
-    <button type="submit" id="btnEnviar" disabled>REGISTRAR MOVIMIENTO</button>
-    <div id="statusBox" class="status" style="display:none;"></div>
+    <button type="submit" id="btnEnviar" disabled>REGISTRAR EN SHEET</button>
   </form>
+  <div id="statusBox" class="status"></div>
 </div>
 
 <script>
-  // REEMPLAZA CON LA URL DE TU WEB APP DE GOOGLE APPS SCRIPT
   const URL_API = "https://script.google.com/macros/s/AKfycbyZlEck5rqAxp1c_oYmB0hqzyeOP3ozWRkbn0-4Aa-mnFE8YAfqlm4JEYdaV7roNHAMXQ/exec";
+
+  let LISTA_USUARIOS = [];
+  let LISTA_MATERIALES = [];
+  let LISTA_TAREAS = [];
+  let idTareaSeleccionada = null;
 
   const inputOp = document.getElementById('operador');
   const inputMP = document.getElementById('materiaprima');
-  const msgOp = document.getElementById('msgOp');
+  const msgOp = document.getElementById('msgOperador');
   const msgMP = document.getElementById('msgMP');
+  const alertaTeclado = document.getElementById('alertaTeclado');
   const btnEnviar = document.getElementById('btnEnviar');
+  const syncBanner = document.getElementById('syncBanner');
   const selectTarea = document.getElementById('selectTarea');
   const infoTarea = document.getElementById('infoTarea');
   const inputCantidad = document.getElementById('cantidad');
@@ -101,42 +124,19 @@
   const inputRack = document.getElementById('rack');
   const inputBox = document.getElementById('box');
 
-  let LISTA_USUARIOS = [];
-  let LISTA_MATERIALES = [];
-  let LISTA_TAREAS = [];
-  let idTareaSeleccionada = null;
+  let ultimaTeclaTiempo = Date.now();
 
-  // Sonidos básicos simulados mediante la API de Audio de Web
-  function emitirBeep(exito = true) {
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type = 'sine';
-      if(exito) {
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        osc.start(); osc.stop(ctx.currentTime + 0.1);
-      } else {
-        osc.frequency.setValueAtTime(220, ctx.currentTime);
-        gain.gain.setValueAtTime(0.2, ctx.currentTime);
-        osc.start(); osc.stop(ctx.currentTime + 0.3);
-      }
-    } catch(e){}
-  }
-
-  // Cargar datos maestros al iniciar la aplicación
+  // AL ABRIR LA APP: DESCARGAR LISTAS EN VIVO DE GOOGLE SHEETS
   async function inicializarMaestros() {
     try {
-      const res = await fetch(`${URL_API}?cargarMaestros=true`);
-      const maestros = await res.json();
+      const respuesta = await fetch(URL_API + "?cargarMaestros=true");
+      const datosMaestros = await respuesta.json();
       
-      LISTA_USUARIOS = maestros.usuarios || [];
-      LISTA_MATERIALES = maestros.materiales || [];
-      LISTA_TAREAS = maestros.tareas || [];
-
-      // Poblar el selector de Tareas Planificadas
+      LISTA_USUARIOS = datosMaestros.usuarios || [];
+      LISTA_MATERIALES = datosMaestros.materiales || [];
+      LISTA_TAREAS = datosMaestros.tareas || [];
+      
+      // Poblar el combo de tareas planificadas
       selectTarea.innerHTML = '<option value="">-- Cargar de forma Manual --</option>';
       LISTA_TAREAS.forEach(t => {
         const opt = document.createElement('option');
@@ -145,20 +145,54 @@
         selectTarea.appendChild(opt);
       });
 
+      // Ocultar banner de carga y habilitar el formulario
+      syncBanner.style.display = 'none';
+      document.querySelectorAll('#mpForm input, #mpForm select, #selectTarea').forEach(el => el.disabled = false);
+      inputOp.focus();
+      
     } catch (err) {
-      console.error("Error cargando maestros:", err);
+      syncBanner.style.backgroundColor = '#f8d7da';
+      syncBanner.style.color = '#721c24';
+      syncBanner.textContent = '❌ Error de red: No se pudo descargar el catálogo de materiales.';
     }
+  }
+
+  window.addEventListener('DOMContentLoaded', inicializarMaestros);
+
+  // AUDIO DE FEEDBACK NATIVO
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  function emitirBeep(esOk) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    if(esOk) {
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    } else {
+      osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.35);
+    }
+  }
+
+  function evaluarBoton() {
+    const opOk = inputOp.classList.contains('valido');
+    const mpOk = inputMP.classList.contains('valido');
+    const rackOk = inputRack.value.trim() !== "";
+    const boxOk = inputBox.value.trim() !== "";
+    btnEnviar.disabled = !(opOk && mpOk && rackOk && boxOk);
   }
 
   // EVENTO AL SELECCIONAR UNA TAREA PLANIFICADA
   selectTarea.addEventListener('change', () => {
     const idSel = selectTarea.value;
     if (!idSel) {
-      // Limpieza si vuelve a manual
+      // Si vuelve a Manual, se resetean y desbloquean las propiedades
       idTareaSeleccionada = null;
       infoTarea.style.display = 'none';
       inputMP.value = "";
       inputMP.disabled = false;
+      inputMP.className = "";
+      msgMP.classList.remove('show');
       inputCantidad.value = "1";
       inputCantidad.disabled = false;
       selectMovimiento.value = "ENTRADA";
@@ -169,86 +203,93 @@
       return;
     }
 
-    // Buscar los datos cargados desde el Sheet de la oficina
     const tarea = LISTA_TAREAS.find(t => t.id === idSel);
     if (tarea) {
       idTareaSeleccionada = tarea.id;
       
-      // Auto-completar y bloquear campos correspondientes de la tarea asignada
+      // Auto-completar y bloquear los campos definidos desde la oficina
       inputMP.value = tarea.codigo;
-      inputMP.disabled = true; // Evita modificaciones erróneas
+      inputMP.disabled = true;
       
-      // ¡SOLUCIÓN AQUÍ!: Forzar e introducir la cantidad exacta asignada por la oficina
-      inputCantidad.value = tarea.cant;
-      inputCantidad.disabled = true; 
+      inputCantidad.value = tarea.cant; // Carga la cantidad asignada automáticamente
+      inputCantidad.disabled = true;
       
-      selectMovimiento.value = "ENTRADA"; // Toda tarea de ingreso pendiente es Entrada
+      selectMovimiento.value = "ENTRADA"; 
       selectMovimiento.disabled = true;
       
       inputRack.value = tarea.rack;
       inputBox.value = tarea.box;
 
-      // Mostrar cuadro informativo de la tarea en la interfaz
       infoTarea.innerHTML = `<strong>Descripción:</strong> ${tarea.desc}<br><strong>Cant. Planificada:</strong> ${tarea.cant}`;
       infoTarea.style.display = 'block';
 
-      // Validar datos cargados automáticamente
-      validarMateriaPrima(tarea.codigo);
+      // Forzar validación visual de la MP cargada por la tarea
+      const mat = LISTA_MATERIALES.find(m => m.codigo === tarea.codigo);
+      if (mat) {
+        inputMP.className = "valido";
+        msgMP.textContent = `✔ ${mat.desc}`;
+        msgMP.classList.add('show');
+      }
+
       evaluarBoton();
     }
   });
 
-  function validarOperador() {
+  // VALIDACIÓN DE OPERADOR
+  inputOp.addEventListener('input', () => {
     const val = inputOp.value.trim();
-    if(!val) { msgOp.className = "msg"; msgOp.textContent = ""; inputOp.className = ""; return false; }
-    const user = LISTA_USUARIOS.find(u => u.legajo === val);
-    if(user) {
-      msgOp.textContent = `✔ ${user.nombre}`;
-      msgOp.className = "msg success show";
-      inputOp.className = "success";
-      return true;
+    const buscado = LISTA_USUARIOS.find(u => u.legajo === val);
+    if (buscado) {
+      inputOp.className = "valido";
+      msgOp.textContent = `✔ Operario: ${buscado.nombre}`;
+      msgOp.classList.add('show');
     } else {
-      msgOp.textContent = "❌ Legajo no registrado";
-      msgOp.className = "msg error show";
-      inputOp.className = "error";
-      return false;
+      inputOp.className = val ? "bloqueado" : "";
+      msgOp.classList.remove('show');
     }
-  }
+    evaluarBoton();
+  });
 
-  function validarMateriaPrima(valor) {
-    const val = (valor || inputMP.value).toUpperCase().trim();
-    if(!val) { msgMP.className = "msg"; msgMP.textContent = ""; inputMP.className = ""; return false; }
-    const mat = LISTA_MATERIALES.find(m => m.codigo === val);
-    if(mat) {
-      msgMP.textContent = `✔ ${mat.desc}`;
-      msgMP.className = "msg success show";
-      inputMP.className = "success";
-      return true;
-    } else {
-      msgMP.textContent = "❌ Código de material inexistente";
-      msgMP.className = "msg error show";
-      inputMP.className = "error";
-      return false;
-    }
-  }
-
-  function evaluarBoton() {
-    const opValido = validarOperador();
-    const mpValido = validarMateriaPrima();
-    const rackVal = inputRack.value.trim();
-    const boxVal = inputBox.value.trim();
-    
-    if(opValido && mpValido && rackVal !== "" && boxVal !== "") {
-      btnEnviar.disabled = false;
-    } else {
-      btnEnviar.disabled = true;
-    }
-  }
-
-  inputOp.addEventListener('input', () => { evaluarBoton(); if(inputOp.value.length >= 4 && !validarOperador()) emitirBeep(false); });
-  inputMP.addEventListener('input', () => { evaluarBoton(); if(inputMP.value.length >= 4 && !validarMateriaPrima()) emitirBeep(false); });
+  // RACK Y BOX COMPORTAMIENTO DE ESCUCHA
   inputRack.addEventListener('input', evaluarBoton);
   inputBox.addEventListener('input', evaluarBoton);
+
+  // ANTI-TECLADO: CONTROL DE VELOCIDAD POR MILISEGUNDOS
+  inputMP.addEventListener('keydown', () => {
+    ultimaTeclaTiempo = Date.now();
+  });
+
+  inputMP.addEventListener('input', (e) => {
+    // Si el campo está bloqueado (por tarea planificada), no evaluar velocidad
+    if (inputMP.disabled) return;
+
+    const tiempoDiferencia = Date.now() - ultimaTeclaTiempo;
+    const val = inputMP.value.toUpperCase().trim();
+    
+    if (tiempoDiferencia > 45 && e.inputType !== "insertFromPaste") {
+      inputMP.value = ""; 
+      inputMP.className = "bloqueado";
+      alertaTeclado.classList.add('show');
+      msgMP.classList.remove('show');
+      evaluarBoton();
+      return; 
+    }
+
+    alertaTeclado.classList.remove('show');
+    const buscado = LISTA_MATERIALES.find(m => m.codigo === val);
+    
+    if (buscado) {
+      inputMP.className = "valido";
+      msgMP.textContent = `✔ ${buscado.desc}`;
+      msgMP.classList.add('show');
+      emitirBeep(true);
+    } else {
+      inputMP.className = val ? "bloqueado" : "";
+      msgMP.classList.remove('show');
+      if (val.length >= 4) emitirBeep(false);
+    }
+    evaluarBoton();
+  });
 
   // ENVÍO DE DATOS POST CON EL ID DE TAREA Y CANTIDAD AUTOMÁTICA
   document.getElementById('mpForm').addEventListener('submit', async (e) => {
@@ -259,15 +300,14 @@
     statusBox.className = "status";
     statusBox.style.display = "none";
 
-    // Creamos el paquete de datos respetando si vino de tarea planificada o manual
     const payload = {
       operador: inputOp.value,
       materiaprima: inputMP.value.toUpperCase().trim(),
-      cantidad: parseInt(inputCantidad.value), // Toma el valor asignado o el manual
+      cantidad: parseInt(inputCantidad.value),
       rack: inputRack.value.trim(),
       box: inputBox.value.trim(),
       movimiento: selectMovimiento.value,
-      idTarea: idTareaSeleccionada // Si viaja null, el Backend procesa como manual estándar
+      idTarea: idTareaSeleccionada // Viajará con el ID único o null si es manual
     };
 
     try {
@@ -278,12 +318,11 @@
         body: JSON.stringify(payload)
       });
 
-      emitirBeep(true);
       statusBox.textContent = "✔ Registrado correctamente en Sheet";
       statusBox.className = "status success";
-      statusBox.style.display = "block";
+      emitirBeep(true);
       
-      // Limpiar formulario y desbloquear controles
+      // Limpiar y restaurar formulario
       idTareaSeleccionada = null;
       infoTarea.style.display = 'none';
       
@@ -303,23 +342,17 @@
       selectTarea.value = "";
       
       inputMP.focus();
-      evaluarBoton();
       
-      // Recargar maestros para actualizar las tareas pendientes quitando la ya realizada
+      // Recargar maestros para remover la tarea procesada del selector
       inicializarMaestros();
-
-    } catch (error) {
-      emitirBeep(false);
-      statusBox.textContent = "❌ Error de conexión al guardar";
+    } catch (err) {
+      statusBox.textContent = "❌ Error de conexión: " + err.message;
       statusBox.className = "status error";
-      statusBox.style.display = "block";
-      btnEnviar.disabled = false;
+      emitirBeep(false);
+    } finally {
+      evaluarBoton();
     }
   });
-
-  // Inicialización Automática
-  inicializarMaestros();
 </script>
-
 </body>
 </html>
