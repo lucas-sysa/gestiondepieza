@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oficina - Asignación de Ingresos</title>
+  <style>
+    :root { --primary: #1d3557; --success: #2a9d8f; --bg: #f1faee; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
+    .card { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    h2 { color: var(--primary); margin-top:0; text-align: center; border-bottom: 2px solid #e63946; padding-bottom: 10px;}
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: var(--primary); }
+    input, select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    button:hover { background: #457b9d; }
+    .status { text-align: center; padding: 10px; margin-top: 15px; border-radius: 4px; display: none; font-weight: bold; }
+    .success { display: block; background: #e8f5e9; color: #2e7d32; }
+    .error { display: block; background: #ffebee; color: #c62828; }
+    .loading-banner { background: #fff3cd; color: #856404; text-align: center; padding: 8px; border-radius: 4px; font-size: 13px; font-weight: bold; margin-bottom: 15px; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2>Control de Oficina: Crear Tarea</h2>
+  <div id="loadingBanner" class="loading-banner">🔄 Sincronizando catálogos de materiales y ubicaciones...</div>
+
+  <form id="oficinaForm">
+    <div class="form-group">
+      <label for="materiaprima">Seleccionar Materia Prima</label>
+      <select id="materiaprima" required disabled>
+        <option value="">-- Elija un material --</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="cantidad">Cantidad a Ingresar</label>
+      <input type="number" id="cantidad" min="1" value="1" required disabled>
+    </div>
+
+    <div class="grid-2">
+      <div class="form-group">
+        <label for="rack">Calle / Rack Destino</label>
+        <select id="rack" required disabled>
+          <option value="">-- Calle --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="box">Posición / Box Destino</label>
+        <select id="box" required disabled>
+          <option value="">-- Box --</option>
+        </select>
+      </div>
+    </div>
+
+    <button type="submit" id="btnAsignar" disabled>ASIGNAR TAREA A HANDHELD</button>
+  </form>
+  <div id="statusBox" class="status"></div>
+</div>
+
+<script>
+  // REEMPLAZAR AQUÍ CON TU URL /EXEC DE GOOGLE APPS SCRIPT
+  const URL_API = "https://script.google.com/macros/s/AKfycbw_UY29K_M201AmIY-wtqZyjwo11XifuzCAsSNPejCXJE4hsf8fPAt13LvPpQDqMSde/exec";
+
+  let LISTA_MATERIALES = [];
+  let LISTA_UBICACIONES = [];
+
+  const selectMP = document.getElementById('materiaprima');
+  const selectRack = document.getElementById('rack');
+  const selectBox = document.getElementById('box');
+  const loadingBanner = document.getElementById('loadingBanner');
+  const statusBox = document.getElementById('statusBox');
+  const btnAsignar = document.getElementById('btnAsignar');
+
+  window.addEventListener('DOMContentLoaded', async () => {
+    try {
+      const respuesta = await fetch(URL_API + "?cargarMaestros=true");
+      const datos = await respuesta.json();
+      
+      LISTA_MATERIALES = datos.materiales || [];
+      LISTA_UBICACIONES = datos.ubicaciones || [];
+
+      // Llenar materiales ordenados
+      LISTA_MATERIALES.sort((a,b) => a.codigo.localeCompare(b.codigo)).forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.codigo;
+        opt.textContent = `${m.codigo} - ${m.desc}`;
+        selectMP.appendChild(opt);
+      });
+
+      // Llenar Racks únicos
+      const racksUnicos = [...new Set(LISTA_UBICACIONES.map(u => u.rack))].sort();
+      racksUnicos.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r; opt.textContent = r;
+        selectRack.appendChild(opt);
+      });
+
+      loadingBanner.style.display = 'none';
+      document.querySelectorAll('#oficinaForm input, #oficinaForm select').forEach(el => el.disabled = false);
+      btnAsignar.disabled = false;
+
+    } catch (err) {
+      loadingBanner.style.backgroundColor = '#f8d7da';
+      loadingBanner.style.color = '#721c24';
+      loadingBanner.textContent = '❌ Error de conexión con el Sheet.';
+    }
+  });
+
+  selectRack.addEventListener('change', () => {
+    const rackSel = selectRack.value;
+    selectBox.innerHTML = '<option value="">-- Box --</option>';
+    if (rackSel) {
+      LISTA_UBICACIONES.filter(u => u.rack === rackSel).map(u => u.box).sort().forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b; opt.textContent = b;
+        selectBox.appendChild(opt);
+      });
+    }
+  });
+
+  document.getElementById('oficinaForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    btnAsignar.disabled = true;
+    statusBox.style.display = 'none';
+
+    const payload = {
+      accion: "crearTareaPendiente",
+      materiaprima: selectMP.value,
+      cantidad: document.getElementById('cantidad').value,
+      rack: selectRack.value,
+      box: selectBox.value
+    };
+
+    try {
+      // Envío POST usando no-cors compatible con Google Apps Script redirecciones
+      await fetch(URL_API, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      statusBox.textContent = "✔ Tarea subida exitosamente al Sheet.";
+      statusBox.className = "status success";
+      document.getElementById('cantidad').value = "1";
+      selectMP.value = ""; selectRack.value = ""; selectBox.innerHTML = '<option value="">-- Box --</option>';
+    } catch (err) {
+      statusBox.textContent = "❌ Error al guardar tarea.";
+      statusBox.className = "status error";
+    } finally {
+      btnAsignar.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

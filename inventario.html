@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Consolidador de Inventario en Tiempo Real</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; margin: 20px; background: #f3f4f7; color: #333; }
+    .header { display: flex; justify-content: space-between; align-items: center; background: #04847c; color: white; padding: 15px 30px; border-radius: 6px; }
+    button { background: #023047; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
+    .card { background: white; padding: 20px; border-radius: 6px; margin-top: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #f1f3f5; color: #023047; }
+    .alert { color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h2>Control de Posiciones y Stock Consolidado</h2>
+  <button onclick="cargarInventario()">🔄 Actualizar Datos</button>
+</div>
+
+<div class="card">
+  <input type="text" id="filtro" placeholder="Buscar por código o ubicación..." onkeyup="filtrarTabla()" style="width: 100%; padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius:4px;">
+  
+  <table id="tablaInventario">
+    <thead>
+      <tr>
+        <th>Código MP</th>
+        <th>Calle / Rack</th>
+        <th>Box / Posición</th>
+        <th>Stock Total Real</th>
+      </tr>
+    </thead>
+    <tbody id="cuerpoTabla">
+      <tr><td colspan="4" style="text-align:center;">Haga clic en 'Actualizar Datos' para sincronizar con la nube...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+  const URL_API = "https://script.google.com/macros/s/AKfycbwQ90PLaA1LuPhtkQIbbnTR745EGp2OSs297fFMZNlKzS4-p33sEF4Xj0--_Fbj2q_g/exec";
+
+  async function cargarInventario() {
+    const tbody = document.getElementById('cuerpoTabla');
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Procesando y agrupando posiciones desde el Sheet...</td></tr>';
+    
+    try {
+      const response = await fetch(URL_API);
+      const rows = await response.json();
+      
+      // rows[0] son las cabeceras: [Usuario, Codigo, Descripción, Entrada, Salida, Rack, Box, Nombre, Fecha]
+      const mapaInventario = {};
+
+      for(let i = 1; i < rows.length; i++) {
+        let fila = rows[i];
+        let codigo = fila[1];
+        let entrada = parseFloat(fila[3]) || 0;
+        let salida = parseFloat(fila[4]) || 0;
+        let rack = fila[5] || 'SIN RACK';
+        let box = fila[6] || 'SIN BOX';
+        
+        if(!codigo) continue;
+
+        // Crear una clave única combinando posición y material
+        let llave = `${codigo}|${rack}|${box}`;
+
+        if(!mapaInventario[llave]) {
+          mapaInventario[llave] = { codigo, rack, box, stock: 0 };
+        }
+        mapaInventario[llave].stock += (entrada - salida);
+      }
+
+      tbody.innerHTML = "";
+      Object.values(mapaInventario).forEach(item => {
+        if(item.stock === 0) return; // Opcional: no mostrar lo que está en 0
+        
+        let tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${item.codigo}</strong></td>
+          <td>${item.rack}</td>
+          <td>${item.box}</td>
+          <td class="${item.stock < 0 ? 'alert' : ''}">${item.stock}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">Error al obtener datos: ${err.message}</td></tr>`;
+    }
+  }
+
+  function filtrarTabla() {
+    let filtro = document.getElementById('filtro').value.toUpperCase();
+    let filas = document.getElementById('cuerpoTabla').getElementsByTagName('tr');
+    
+    for (let i = 0; i < filas.length; i++) {
+      let textoFila = filas[i].innerText || filas[i].textContent;
+      if (textoFila.toUpperCase().indexOf(filtro) > -1) {
+        filas[i].style.display = "";
+      } else {
+        filas[i].style.display = "none";
+      }
+    }
+  }
+</script>
+</body>
+</html>
