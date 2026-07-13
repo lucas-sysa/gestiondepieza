@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Captura Materia Prima V2</title>
+  <title>Handheld - Tareas de Ingreso</title>
   <style>
     :root { --primary: #023047; --success: #2a9d8f; --error: #e63946; --bg: #f8f9fa; }
     body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; justify-content: center; }
@@ -12,14 +12,14 @@
     .form-group { margin-bottom: 12px; }
     label { display: block; font-size: 12px; font-weight: 600; color: var(--primary); margin-bottom: 4px; }
     input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; background-color: #fff; }
-    input:focus, select:focus { border-color: var(--primary); outline: none; }
+    input:disabled, select:disabled { background-color: #e9ecef; color: #495057; }
     
     .valido { border-color: var(--success) !important; background-color: #f4fbf7; }
-    .bloqueado { border-color: var(--error) !important; background-color: #fff5f5; animation: shake 0.2s 2; }
-    .mensaje-alerta { font-size: 11px; font-weight: bold; color: var(--error); margin-top: 3px; display: none; }
-    .mensaje-alerta.show { display: block; }
+    .bloqueado { border-color: var(--error) !important; background-color: #fff5f5; }
     .mensaje-ok { font-size: 11px; font-weight: bold; color: var(--success); margin-top: 3px; display: none; }
     .mensaje-ok.show { display: block; }
+
+    .tarea-box { background-color: #e8f1f5; border: 1px dashed #023047; padding: 10px; border-radius: 4px; margin-bottom: 12px; }
 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
@@ -27,23 +27,14 @@
     .status { text-align: center; padding: 10px; margin-top: 10px; border-radius: 4px; display: none; font-weight: bold; }
     .success { display: block; background: #e8f5e9; color: #2e7d32; }
     .error { display: block; background: #ffebee; color: #c62828; }
-
     .sync-banner { background: #fff3cd; color: #856404; text-align: center; padding: 6px; font-size: 11px; font-weight: bold; border-radius: 4px; margin-bottom: 10px; }
-
-    @keyframes shake {
-      0% { transform: translateX(0); }
-      25% { transform: translateX(-4px); }
-      75% { transform: translateX(4px); }
-      100% { transform: translateX(0); }
-    }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h2>Handheld MP - V2</h2>
-  
-  <div id="syncBanner" class="sync-banner">🔄 Sincronizando maestros del depósito desde el Sheet...</div>
+  <h2>Handheld MP - Tareas Dirigidas</h2>
+  <div id="syncBanner" class="sync-banner">🔄 Sincronizando tareas pendientes del Sheet...</div>
 
   <form id="mpForm">
     <div class="form-group">
@@ -51,32 +42,34 @@
       <input type="number" id="operador" required autofocus autocomplete="off" disabled>
       <div id="msgOperador" class="mensaje-ok"></div>
     </div>
+
+    <div class="form-group tarea-box">
+      <label for="tareaSeleccionada" style="color:#023047;">📋 Seleccionar Tarea Pendiente</label>
+      <select id="tareaSeleccionada" required disabled>
+        <option value="">-- No hay tareas o falta Legajo --</option>
+      </select>
+    </div>
     
     <div class="grid-2">
       <div class="form-group">
-        <label for="materiaprima">Código MP (¡SÓLO ESCÁNER!)</label>
-        <input type="text" id="materiaprima" required autocomplete="off" style="text-transform:uppercase" placeholder="Gatille código" disabled>
-        <div id="alertaTeclado" class="mensaje-alerta">⚠️ Bloqueado: Use el lector de la handheld</div>
+        <label Pisando>Código MP Asignado</label>
+        <input type="text" id="materiaprima" readonly required placeholder="Auto desde Tarea">
         <div id="msgMP" class="mensaje-ok"></div>
       </div>
       <div class="form-group">
         <label for="cantidad">Cantidad</label>
-        <input type="number" id="cantidad" required min="1" value="1" disabled>
+        <input type="number" id="cantidad" readonly required min="1">
       </div>
     </div>
 
     <div class="grid-2">
       <div class="form-group">
-        <label for="rack">Calle / Rack</label>
-        <select id="rack" required disabled>
-          <option value="">-- Seleccione --</option>
-        </select>
+        <label for="rack">Calle / Rack Destino</label>
+        <input type="text" id="rack" readonly required placeholder="Auto desde Tarea">
       </div>
       <div class="form-group">
-        <label for="box">Posición / Box</label>
-        <select id="box" required disabled>
-          <option value="">-- Seleccione Rack --</option>
-        </select>
+        <label for="box">Posición / Box Destino</label>
+        <input type="text" id="box" readonly required placeholder="Auto desde Tarea">
       </div>
     </div>
 
@@ -84,189 +77,151 @@
       <label for="tipo_movimiento">Movimiento</label>
       <select id="tipo_movimiento" disabled>
         <option value="ENTRADA">Entrada de Stock</option>
-        <option value="SALIDA">Salida de Stock</option>
       </select>
     </div>
 
-    <button type="submit" id="btnEnviar" disabled>REGISTRAR EN SHEET</button>
+    <button type="submit" id="btnEnviar" disabled>COMPLETAR E INGRESAR TAREA</button>
   </form>
   <div id="statusBox" class="status"></div>
 </div>
 
 <script>
-  // REEMPLAZAR AQUÍ CON TU NUEVA URL GENERADA EN APPS SCRIPT
+  // REEMPLAZAR AQUÍ CON TU URL /EXEC DE GOOGLE APPS SCRIPT
   const URL_API = "https://script.google.com/macros/s/AKfycbwQ90PLaA1LuPhtkQIbbnTR745EGp2OSs297fFMZNlKzS4-p33sEF4Xj0--_Fbj2q_g/exec";
 
   let LISTA_USUARIOS = [];
-  let LISTA_MATERIALES = [];
-  let LISTA_UBICACIONES = [];
+  let LISTA_TAREAS = [];
 
   const inputOp = document.getElementById('operador');
+  const selectTarea = document.getElementById('tareaSeleccionada');
   const inputMP = document.getElementById('materiaprima');
-  const selectRack = document.getElementById('rack');
-  const selectBox = document.getElementById('box');
+  const inputCantidad = document.getElementById('cantidad');
+  const inputRack = document.getElementById('rack');
+  const inputBox = document.getElementById('box');
+  
   const msgOp = document.getElementById('msgOperador');
   const msgMP = document.getElementById('msgMP');
-  const alertaTeclado = document.getElementById('alertaTeclado');
   const btnEnviar = document.getElementById('btnEnviar');
   const syncBanner = document.getElementById('syncBanner');
 
-  let ultimaTeclaTiempo = Date.now();
-
-  // AL ARRANCAR: CARGAR MAESTROS TOTALES
+  // AL ARRANCAR: TRAER MAESTROS Y TAREAS PENDIENTES
   window.addEventListener('DOMContentLoaded', async () => {
     try {
       const respuesta = await fetch(URL_API + "?cargarMaestros=true");
       const datosMaestros = await respuesta.json();
       
       LISTA_USUARIOS = datosMaestros.usuarios || [];
-      LISTA_MATERIALES = datosMaestros.materiales || [];
-      LISTA_UBICACIONES = datosMaestros.ubicaciones || [];
+      LISTA_TAREAS = datosMaestros.tareas || [];
       
-      // Cargar select de Racks sin duplicados
-      const racksUnicos = [...new Set(LISTA_UBICACIONES.map(u => u.rack))].sort();
-      racksUnicos.forEach(r => {
-        const opt = document.createElement('option');
-        opt.value = r; opt.textContent = r;
-        selectRack.appendChild(opt);
-      });
-
       syncBanner.style.display = 'none';
-      document.querySelectorAll('#mpForm input, #mpForm select').forEach(el => el.disabled = false);
+      inputOp.disabled = false;
       inputOp.focus();
       
     } catch (err) {
       syncBanner.style.backgroundColor = '#f8d7da';
       syncBanner.style.color = '#721c24';
-      syncBanner.textContent = '❌ Error de red: No se pudo descargar el catálogo maestro.';
+      syncBanner.textContent = '❌ Error de red: No se pudieron bajar las tareas.';
     }
   });
 
-  // FILTRADO DINÁMICO DE BOXES SEGÚN EL RACK SELECCIONADO
-  selectRack.addEventListener('change', () => {
-    const rackSeleccionado = selectRack.value;
-    selectBox.innerHTML = '<option value="">-- Seleccione --</option>';
-    
-    if (rackSeleccionado) {
-      const boxesFiltrados = LISTA_UBICACIONES
-        .filter(u => u.rack === rackSeleccionado)
-        .map(u => u.box)
-        .sort();
-        
-      boxesFiltrados.forEach(b => {
-        const opt = document.createElement('option');
-        opt.value = b; opt.textContent = b;
-        selectBox.appendChild(opt);
-      });
-    }
-    evaluarBoton();
-  });
-
-  selectBox.addEventListener('change', evaluarBoton);
-
-  // AUDIO DE FEEDBACK
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  function emitirBeep(esOk) {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    if(esOk) {
-      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-      osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-    } else {
-      osc.frequency.setValueAtTime(220, audioCtx.currentTime);
-      osc.start(); osc.stop(audioCtx.currentTime + 0.35);
-    }
-  }
-
-  function evaluarBoton() {
-    const opOk = inputOp.classList.contains('valido');
-    const mpOk = inputMP.classList.contains('valido');
-    const rackOk = selectRack.value !== "";
-    const boxOk = selectBox.value !== "";
-    btnEnviar.disabled = !(opOk && mpOk && rackOk && boxOk);
-  }
-
-  // VALIDACIÓN DE OPERADOR
+  // VALIDACIÓN DE OPERADOR HABILITA LAS TAREAS
   inputOp.addEventListener('input', () => {
     const val = inputOp.value.trim();
     const buscado = LISTA_USUARIOS.find(u => u.legajo === val);
+    
     if (buscado) {
       inputOp.className = "valido";
       msgOp.textContent = `✔ Operario: ${buscado.nombre}`;
       msgOp.classList.add('show');
+      
+      // Habilitar selección de tareas pendientes
+      selectTarea.disabled = false;
+      selectTarea.innerHTML = '<option value="">-- Elija la tarea asignada --</option>';
+      
+      if(LISTA_TAREAS.length === 0) {
+        selectTarea.innerHTML = '<option value="">🎉 ¡No hay tareas pendientes!</option>';
+      } else {
+        LISTA_TAREAS.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = `${t.codigo} -> Cant: ${t.cant} (Ir a ${t.rack}-${t.box})`;
+          selectTarea.appendChild(opt);
+        });
+      }
     } else {
       inputOp.className = val ? "bloqueado" : "";
       msgOp.classList.remove('show');
+      selectTarea.disabled = true;
+      selectTarea.innerHTML = '<option value="">-- No hay tareas o falta Legajo --</option>';
+      limpiarCamposTarea();
     }
     evaluarBoton();
   });
 
-  // ANTI-TECLADO INDUSTRIAL
-  inputMP.addEventListener('keydown', () => { ultimaTeclaTiempo = Date.now(); });
-  inputMP.addEventListener('input', (e) => {
-    const tiempoDiferencia = Date.now() - ultimaTeclaTiempo;
-    const val = inputMP.value.toUpperCase().trim();
+  // AL SELECCIONAR LA TAREA SE AUTOCOMPLETA LA PANTALLA
+  selectTarea.addEventListener('change', () => {
+    const tareaId = selectTarea.value;
+    const tarea = LISTA_TAREAS.find(t => t.id === tareaId);
     
-    if (tiempoDiferencia > 45 && e.inputType !== "insertFromPaste") {
-      inputMP.value = ""; 
-      inputMP.className = "bloqueado";
-      alertaTeclado.classList.add('show');
-      msgMP.classList.remove('show');
-      evaluarBoton();
-      return; 
-    }
-
-    alertaTeclado.classList.remove('show');
-    const buscado = LISTA_MATERIALES.find(m => m.codigo === val);
-    
-    if (buscado) {
-      inputMP.className = "valido";
-      msgMP.textContent = `✔ ${buscado.desc}`;
+    if (tarea) {
+      inputMP.value = tarea.codigo;
+      inputCantidad.value = tarea.cant;
+      inputRack.value = tarea.rack;
+      inputBox.value = tarea.box;
+      msgMP.textContent = `✔ ${tarea.desc}`;
       msgMP.classList.add('show');
-      emitirBeep(true);
     } else {
-      inputMP.className = val ? "bloqueado" : "";
-      msgMP.classList.remove('show');
-      if (val.length >= 4) emitirBeep(false);
+      limpiarCamposTarea();
     }
     evaluarBoton();
   });
 
-  // ENVÍO DE DATOS
+  function limpiarCamposTarea() {
+    inputMP.value = ""; inputCantidad.value = ""; inputRack.value = ""; inputBox.value = "";
+    msgMP.classList.remove('show');
+  }
+
+  function evaluarBoton() {
+    const opOk = inputOp.classList.contains('valido');
+    const tareaOk = selectTarea.value !== "";
+    btnEnviar.disabled = !(opOk && tareaOk);
+  }
+
+  // ENVÍO DE DATOS POST ORIGINAL MÁS ACTUALIZACIÓN DE ESTADO
   document.getElementById('mpForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const statusBox = document.getElementById('statusBox');
-    
     btnEnviar.disabled = true;
-    statusBox.className = "status";
     statusBox.style.display = "none";
 
     const payload = {
       operador: inputOp.value,
-      materiaprima: inputMP.value.toUpperCase().trim(),
-      cantidad: parseInt(document.getElementById('cantidad').value),
-      rack: selectRack.value,
-      box: selectBox.value,
-      movimiento: document.getElementById('tipo_movimiento').value
+      materiaprima: inputMP.value,
+      cantidad: parseInt(inputCantidad.value),
+      rack: inputRack.value,
+      box: inputBox.value,
+      movimiento: "ENTRADA",
+      idTarea: selectTarea.value // Mandamos el ID para marcar como ingresado en el Excel
     };
 
     try {
-      const response = await fetch(URL_API, {
+      await fetch(URL_API, {
         method: "POST",
         mode: "no-cors", 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
 
-      statusBox.textContent = "✔ Registrado correctamente en Sheet";
+      statusBox.textContent = "✔ Tarea guardada y removida de pendientes.";
       statusBox.className = "status success";
       
-      inputMP.value = "";
-      inputMP.className = "";
-      msgMP.classList.remove('show');
-      document.getElementById('cantidad').value = "1";
-      inputMP.focus();
+      // Remover la tarea completada de la lista local
+      LISTA_TAREAS = LISTA_TAREAS.filter(t => t.id !== selectTarea.value);
+      
+      // Resetear formulario manteniendo al operario logueado
+      selectTarea.value = "";
+      limpiarCamposTarea();
+      inputOp.dispatchEvent(new Event('input')); // Recarga el select de tareas
     } catch (err) {
       statusBox.textContent = "❌ Error de conexión: " + err.message;
       statusBox.className = "status error";
