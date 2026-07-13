@@ -152,10 +152,11 @@
 </div>
 
 <script>
-// ==========================================
-// PONÉ TU URL DE GOOGLE SHEETS (CSV) ACÁ ABAJO:
-// ==========================================
-const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ351UvqaHm5c42WFF0oVyTvbGbAyOA0VHMi1XPvDgTRwiPVHrIGH4-Y3kWbEOWG7NcR5cPfkDLEmDW/pubhtml';
+// =========================================================================
+// REEMPLAZÁ ESTA URL COMPLETA CON EL FORMATO EXACTO DE EXPORTACIÓN DIRECTA:
+// Asegurate de cambiar 'TU_ID_DE_DOCUMENTO_AQUI' por la cadena de letras y números de tu Sheet.
+// =========================================================================
+const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ351UvqaHm5c42WFF0oVyTvbGbAyOA0VHMi1XPvDgTRwiPVHrIGH4-Y3kWbEOWG7NcR5cPfkDLEmDW/pub?output=csv';
 
 let datosBase = [];
 let segmentacionSectores = { iny: [], asiento: [], int: [], foam: [] };
@@ -166,14 +167,14 @@ let chartObj = null;
 let chartProgress = null;
 let chartQuality = null;
 
-// Carga automática al abrir la pantalla
+// Carga inicial al abrir la página web desde GitHub Pages
 window.onload = function() {
     cargarDesdeGoogleSheets();
 };
 
 async function cargarDesdeGoogleSheets() {
-    if (!GOOGLE_SHEET_CSV_URL || GOOGLE_SHEET_CSV_URL.includes('TU_URL_DE_GOOGLE_SHEETS_AQUI')) {
-        alert("Por favor, configura la URL correcta de tu Google Sheet en el código.");
+    if (!GOOGLE_SHEET_CSV_URL || GOOGLE_SHEET_CSV_URL.includes('TU_ID_DE_DOCUMENTO_AQUI')) {
+        alert("Atención: Debes configurar tu ID real de Google Sheet en la constante GOOGLE_SHEET_CSV_URL.");
         return;
     }
 
@@ -182,18 +183,24 @@ async function cargarDesdeGoogleSheets() {
 
     try {
         const response = await fetch(GOOGLE_SHEET_CSV_URL);
-        if (!response.ok) throw new Error("No se pudo obtener el archivo.");
+        if (!response.ok) throw new Error("Error en la respuesta del servidor de Google.");
         
         const dataText = await response.text();
         
-        // Lee el contenido plano CSV usando la librería XLSX interna
-        const wb = XLSX.read(dataText, { type: 'string' });
+        // CORRECCIÓN CLAVE: Obligamos a la librería a tratar el texto plano crudo como CSV delimitado
+        const wb = XLSX.read(dataText, { type: 'string', raw: true });
         const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+        
+        if (!json || json.length === 0) {
+            throw new Error("El archivo CSV se leyó vacío o el formato de las columnas no coincide.");
+        }
         
         procesarDatos(json);
     } catch (error) {
         console.error(error);
-        alert("Error crítico al intentar leer los datos en tiempo real de Google Sheets. Verifica la conexión o el enlace de publicación.");
+        alert("Error al procesar Google Sheets. Verifica que tu documento tenga permisos 'Cualquier persona con el enlace' y que la URL termine estrictamente en '/export?format=csv'.");
+        const tbody = document.querySelector('#resultTable tbody');
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:red;">Error de sincronización. Revisa la consola o el enlace configurado.</td></tr>`;
     } finally {
         loader.style.display = 'none';
     }
@@ -220,7 +227,7 @@ function procesarDatos(json) {
                 esEspuma: false
             };
         }
-        map[key].teorico += (parseFloat(item['Entrada de Stock']||item['Entradas'])||0) + (parseFloat(item['Salida de Stock']||item['Salidas'])||0);
+        map[key].teorico += (parseFloat(item['Entrada de Stock']||item['Entradas']||item['Entrada'])||0) + (parseFloat(item['Salida de Stock']||item['Salidas']||item['Salida'])||0);
     });
     
     datosBase = Object.values(map).filter(d => d.teorico > 0);
