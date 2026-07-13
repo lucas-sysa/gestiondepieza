@@ -3,41 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Handheld - Control de Stock Inteligente</title>
+  <title>Captura Materia Prima V2</title>
   <style>
     :root { --primary: #023047; --success: #2a9d8f; --error: #e63946; --bg: #f8f9fa; }
     body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; justify-content: center; }
     .container { width: 100%; max-width: 400px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    h2 { text-align: center; color: var(--primary); margin-top: 0; font-size: 1.3rem; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
+    h2 { text-align: center; color: var(--primary); margin-top: 0; font-size: 1.4rem; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
     .form-group { margin-bottom: 12px; }
     label { display: block; font-size: 12px; font-weight: 600; color: var(--primary); margin-bottom: 4px; }
-    input, select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; background-color: #fff; }
+    input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+    input:focus, select:focus { border-color: var(--primary); outline: none; }
     input:disabled, select:disabled { background-color: #e9ecef; color: #495057; }
     
     .valido { border-color: var(--success) !important; background-color: #f4fbf7; }
-    .bloqueado { border-color: var(--error) !important; background-color: #fff5f5; }
+    .bloqueado { border-color: var(--error) !important; background-color: #fff5f5; animation: shake 0.2s 2; }
+    .mensaje-alerta { font-size: 11px; font-weight: bold; color: var(--error); margin-top: 3px; display: none; }
+    .mensaje-alerta.show { display: block; }
     .mensaje-ok { font-size: 11px; font-weight: bold; color: var(--success); margin-top: 3px; display: none; }
     .mensaje-ok.show { display: block; }
-    .info-stock { font-size: 12px; color: #555; background: #fff3cd; padding: 6px; border-radius: 4px; margin-top: 5px; font-weight: bold; display: none;}
-
-    .modo-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; background: #e8f1f5; padding: 8px; border-radius: 4px;}
-    .modo-btn { padding: 8px; text-align: center; font-size: 12px; font-weight: bold; background: #ddd; border-radius: 4px; cursor: pointer; border: 1px solid #bbb;}
-    .modo-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    button[type="submit"] { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
     button:disabled { background: #ccc; cursor: not-allowed; }
     .status { text-align: center; padding: 10px; margin-top: 10px; border-radius: 4px; display: none; font-weight: bold; }
     .success { display: block; background: #e8f5e9; color: #2e7d32; }
     .error { display: block; background: #ffebee; color: #c62828; }
+
     .sync-banner { background: #fff3cd; color: #856404; text-align: center; padding: 6px; font-size: 11px; font-weight: bold; border-radius: 4px; margin-bottom: 10px; }
+
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+      100% { transform: translateX(0); }
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h2>Handheld MP - Almacén</h2>
-  <div id="syncBanner" class="sync-banner">🔄 Sincronizando existencias del depósito...</div>
+  <h2>Handheld MP - V2</h2>
+  
+  <div id="syncBanner" class="sync-banner">🔄 Sincronizando listas de materiales y usuarios del Sheet...</div>
 
   <form id="mpForm">
     <div class="form-group">
@@ -46,274 +53,252 @@
       <div id="msgOperador" class="mensaje-ok"></div>
     </div>
 
-    <label>Tipo de Tarea / Flujo</label>
-    <div class="modo-box">
-      <div id="btnModoTarea" class="modo-btn active" onclick="cambiarModo('TAREA')">📋 Por Asignación</div>
-      <div id="btnModoLibre" class="modo-btn" onclick="cambiarModo('LIBRE')">🔍 Salida / Búsqueda Libre</div>
-    </div>
-
-    <div class="form-group" id="wrapperTarea">
-      <label for="tareaSeleccionada">Seleccionar Tarea Planificada</label>
-      <select id="tareaSeleccionada" disabled>
-        <option value="">-- Ingrese Legajo Primero --</option>
+    <div class="form-group">
+      <label for="idTarea">Tarea Planificada (Opcional)</label>
+      <select id="idTarea" disabled>
+        <option value="">-- Movimiento Libre (Sin Tarea Asignada) --</option>
       </select>
-    </div>
-
-    <div class="form-group" id="wrapperFiltroCodigo" style="display: none;">
-      <label for="buscarCodigo">Escanear / Escribir Código MP</label>
-      <input type="text" id="buscarCodigo" placeholder="Escriba código y presione Enter" autocomplete="off">
-      <div id="infoSugerenciaStock" class="info-stock"></div>
     </div>
     
     <div class="grid-2">
       <div class="form-group">
-        <label>Código MP</label>
-        <input type="text" id="materiaprima" readonly required placeholder="Código">
+        <label for="materiaprima">Código MP (¡SÓLO ESCÁNER!)</label>
+        <input type="text" id="materiaprima" required autocomplete="off" style="text-transform:uppercase" placeholder="Gatille código" disabled>
+        <div id="alertaTeclado" class="mensaje-alerta">⚠️ Bloqueado: Use el lector de la handheld</div>
         <div id="msgMP" class="mensaje-ok"></div>
       </div>
       <div class="form-group">
         <label for="cantidad">Cantidad</label>
-        <input type="number" id="cantidad" required min="1" disabled>
+        <input type="number" id="cantidad" required min="1" value="1" disabled>
       </div>
     </div>
 
     <div class="grid-2">
       <div class="form-group">
         <label for="rack">Calle / Rack</label>
-        <input type="text" id="rack" readonly required placeholder="Ubicación">
+        <input type="text" id="rack" placeholder="e.g. CALLE 01" required disabled>
       </div>
       <div class="form-group">
         <label for="box">Posición / Box</label>
-        <input type="text" id="box" readonly required placeholder="Ubicación">
+        <input type="text" id="box" placeholder="e.g. P 01" required disabled>
       </div>
     </div>
 
     <div class="form-group">
-      <label>Movimiento</label>
-      <input type="text" id="movimientoTexto" readonly value="ENTRADA" style="font-weight: bold; text-align: center; background: #eee;">
+      <label for="tipo_movimiento">Movimiento</label>
+      <select id="tipo_movimiento" disabled>
+        <option value="ENTRADA">Entrada de Stock</option>
+        <option value="SALIDA">Salida de Stock</option>
+      </select>
     </div>
 
-    <button type="submit" id="btnEnviar" disabled>REGISTRAR OPERACIÓN</button>
+    <button type="submit" id="btnEnviar" disabled>REGISTRAR EN SHEET</button>
   </form>
   <div id="statusBox" class="status"></div>
 </div>
 
 <script>
-  // REEMPLAZAR CON TU URL /EXEC DE GOOGLE APPS SCRIPT
   const URL_API = "https://script.google.com/macros/s/AKfycbzK2RUUCOesg8XTt3Y67ViDM2RAnDir2TipzBdB2HqrEjrpNHx4YjxR6SscxyJAHx0y/exec";
 
+  // Listas dinámicas mapeadas desde la base de datos
   let LISTA_USUARIOS = [];
   let LISTA_MATERIALES = [];
   let LISTA_TAREAS = [];
-  let MAPA_STOCK = {};
-  let MODO_ACTUAL = "TAREA"; // TAREA o LIBRE
 
   const inputOp = document.getElementById('operador');
-  const selectTarea = document.getElementById('tareaSeleccionada');
-  const inputBuscarCodigo = document.getElementById('buscarCodigo');
-  
+  const selectTarea = document.getElementById('idTarea');
   const inputMP = document.getElementById('materiaprima');
-  const inputCantidad = document.getElementById('cantidad');
+  const inputCant = document.getElementById('cantidad');
   const inputRack = document.getElementById('rack');
   const inputBox = document.getElementById('box');
-  const movimientoTexto = document.getElementById('movimientoTexto');
-  
+  const selectMov = document.getElementById('tipo_movimiento');
+
   const msgOp = document.getElementById('msgOperador');
   const msgMP = document.getElementById('msgMP');
-  const infoSugerenciaStock = document.getElementById('infoSugerenciaStock');
+  const alertaTeclado = document.getElementById('alertaTeclado');
   const btnEnviar = document.getElementById('btnEnviar');
   const syncBanner = document.getElementById('syncBanner');
 
+  let ultimaTeclaTiempo = Date.now();
+
+  // AL ABRIR LA APP: DESCARGAR DATOS COMPLETOS
   window.addEventListener('DOMContentLoaded', async () => {
     try {
       const respuesta = await fetch(URL_API + "?cargarMaestros=true");
-      const datos = await respuesta.json();
+      const datosMaestros = await respuesta.json();
       
-      LISTA_USUARIOS = datos.usuarios || [];
-      LISTA_MATERIALES = datos.materiales || [];
-      LISTA_TAREAS = datos.tareas || [];
-      MAPA_STOCK = datos.mapaStock || {};
+      LISTA_USUARIOS = datosMaestros.usuarios || [];
+      LISTA_MATERIALES = datosMaestros.materiales || [];
+      LISTA_TAREAS = datosMaestros.tareas || [];
+      
+      // Llenar el selector de tareas pendientes de la oficina
+      LISTA_TAREAS.forEach(tarea => {
+        const opt = document.createElement('option');
+        opt.value = tarea.id;
+        opt.textContent = `${tarea.codigo} - Cant: ${tarea.cant} (${tarea.movimiento})`;
+        selectTarea.appendChild(opt);
+      });
       
       syncBanner.style.display = 'none';
-      inputOp.disabled = false;
+      document.querySelectorAll('#mpForm input, #mpForm select').forEach(el => el.disabled = false);
       inputOp.focus();
+      
     } catch (err) {
       syncBanner.style.backgroundColor = '#f8d7da';
       syncBanner.style.color = '#721c24';
-      syncBanner.textContent = '❌ Error: No se conectó con el almacén.';
+      syncBanner.textContent = '❌ Error de red: No se pudo conectar al servidor.';
     }
   });
 
-  inputOp.addEventListener('input', () => {
-    const val = inputOp.value.trim();
-    const buscado = LISTA_USUARIOS.find(u => u.legajo === val);
-    
-    if (buscado) {
-      inputOp.className = "valido";
-      msgOp.textContent = `✔ Operario: ${buscado.nombre}`;
-      msgOp.classList.add('show');
-      actualizarControlesPorModo();
-    } else {
-      inputOp.className = val ? "bloqueado" : "";
-      msgOp.classList.remove('show');
-      selectTarea.disabled = true;
-      inputBuscarCodigo.disabled = true;
-      limpiarCampos();
-    }
-    evaluarBoton();
-  });
-
-  function cambiarModo(modo) {
-    if(!inputOp.classList.contains('valido')) return;
-    MODO_ACTUAL = modo;
-    document.getElementById('btnModoTarea').className = "modo-btn" + (modo === 'TAREA' ? " active" : "");
-    document.getElementById('btnModoLibre').className = "modo-btn" + (modo === 'LIBRE' ? " active" : "");
-    limpiarCampos();
-    actualizarControlesPorModo();
-  }
-
-  function actualizarControlesPorModo() {
-    if (MODO_ACTUAL === "TAREA") {
-      document.getElementById('wrapperTarea').style.display = "block";
-      document.getElementById('wrapperFiltroCodigo').style.display = "none";
-      selectTarea.disabled = false;
-      selectTarea.innerHTML = '<option value="">-- Seleccione tarea asignada --</option>';
-      LISTA_TAREAS.forEach(t => {
-        const opt = document.createElement('option');
-        opt.value = t.id;
-        opt.textContent = `[${t.movimiento}] ${t.codigo} (${t.rack}-${t.box})`;
-        selectTarea.appendChild(opt);
-      });
-      inputCantidad.disabled = true;
-    } else {
-      document.getElementById('wrapperTarea').style.display = "none";
-      document.getElementById('wrapperFiltroCodigo').style.display = "block";
-      inputBuscarCodigo.disabled = false;
-      inputBuscarCodigo.focus();
-      movimientoTexto.value = "SALIDA";
-      inputCantidad.disabled = false;
-    }
-    evaluarBoton();
-  }
-
-  // EVENTO MODO ASIGNACIÓN
+  // GESTIÓN NATIVA DE CAMBIO DE TAREA PLANIFICADA
   selectTarea.addEventListener('change', () => {
-    const tarea = LISTA_TAREAS.find(t => t.id === selectTarea.value);
-    if (tarea) {
-      inputMP.value = tarea.codigo;
-      inputCantidad.value = tarea.cant;
-      inputRack.value = tarea.rack;
-      inputBox.value = tarea.box;
-      movimientoTexto.value = tarea.movimiento;
-      const mBase = LISTA_MATERIALES.find(m => m.codigo === tarea.codigo);
-      msgMP.textContent = `✔ ${mBase ? mBase.desc : tarea.desc}`;
-      msgMP.classList.add('show');
-    } else {
-      limpiarCampos();
-    }
-    evaluarBoton();
-  });
+    const idSeleccionado = selectTarea.value;
+    if (idSeleccionado) {
+      const tareaEncontrada = LISTA_TAREAS.find(t => t.id === idSeleccionado);
+      if (tareaEncontrada) {
+        // Rellenar automáticamente los datos enviados por la oficina
+        inputMP.value = tareaEncontrada.codigo;
+        inputCant.value = tareaEncontrada.cant;
+        inputRack.value = tareaEncontrada.rack;
+        inputBox.value = tareaEncontrada.box;
+        selectMov.value = tareaEncontrada.movimiento;
 
-  // EVENTO MODO BÚSQUEDA LIBRE (AL PICAR CÓDIGO)
-  inputBuscarCodigo.addEventListener('change', () => {
-    const codBuscado = inputBuscarCodigo.value.toUpperCase().trim();
-    const mBase = LISTA_MATERIALES.find(m => m.codigo === codBuscado);
-    
-    infoSugerenciaStock.style.display = "none";
-    limpiarCampos();
-    
-    if (mBase) {
-      inputMP.value = mBase.codigo;
-      msgMP.textContent = `✔ ${mBase.desc}`;
-      msgMP.classList.add('show');
-      
-      // Consultar el mapa de stock para ver dónde está guardado
-      const ubicacionesDisponibles = MAPA_STOCK[codBuscado] || [];
-      
-      if (ubicacionesDisponibles.length > 0) {
-        // Tomamos de manera inteligente la primera ubicación donde haya stock disponible
-        const principal = ubicacionesDisponibles[0];
-        inputRack.value = principal.rack;
-        inputBox.value = principal.box;
+        // Marcamos el código como válido y bloqueamos inputs para evitar manipulaciones erróneas
+        inputMP.className = "valido";
+        msgMP.textContent = `✔ ${tareaEncontrada.desc}`;
+        msgMP.classList.add('show');
         
-        // Armar el cartel descriptivo para el operario
-        let detalle = "📍 Encontrado en:<br>";
-        ubicacionesDisponibles.forEach(u => {
-          detalle += `• ${u.rack} [Box ${u.box}]: Disp. ${u.stock} und.<br>`;
-        });
-        infoSugerenciaStock.innerHTML = detalle;
-        infoSugerenciaStock.style.display = "block";
-        inputCantidad.focus();
-      } else {
-        infoSugerenciaStock.innerHTML = "⚠️ Alerta: El material figura sin stock en ningún sector.";
-        infoSugerenciaStock.style.display = "block";
+        inputMP.disabled = true;
+        inputCant.disabled = true;
       }
     } else {
-      if(codBuscado) {
-        alert("El código escaneado no existe en el maestro de materiales.");
-        inputBuscarCodigo.value = "";
-      }
+      // Si vuelve a Movimiento Libre, reseteamos e iniciamos de cero
+      inputMP.value = "";
+      inputMP.className = "";
+      inputCant.value = "1";
+      inputRack.value = "";
+      inputBox.value = "";
+      selectMov.value = "ENTRADA";
+      msgMP.classList.remove('show');
+      
+      inputMP.disabled = false;
+      inputCant.disabled = false;
     }
     evaluarBoton();
   });
 
-  function limpiarCampos() {
-    inputMP.value = ""; inputCantidad.value = ""; inputRack.value = ""; inputBox.value = "";
-    msgMP.classList.remove('show');
+  // AUDIO DE FEEDBACK NATIVO
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  function emitirBeep(esOk) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    if(esOk) {
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    } else {
+      osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.35);
+    }
   }
 
   function evaluarBoton() {
     const opOk = inputOp.classList.contains('valido');
-    const datosCargados = inputMP.value !== "" && inputRack.value !== "" && inputCantidad.value > 0;
-    btnEnviar.disabled = !(opOk && datosCargados);
+    const mpOk = inputMP.classList.contains('valido');
+    btnEnviar.disabled = !(opOk && mpOk);
   }
 
-  inputCantidad.addEventListener('input', evaluarBoton);
+  // VALIDACIÓN DE OPERADOR
+  inputOp.addEventListener('input', () => {
+    const val = inputOp.value.trim();
+    const buscado = LISTA_USUARIOS.find(u => u.legajo === val);
+    if (buscado) {
+      inputOp.className = "valido";
+      msgOp.textContent = `✔ Operario: ${buscado.nombre}`;
+      msgOp.classList.add('show');
+    } else {
+      inputOp.className = val ? "bloqueado" : "";
+      msgOp.classList.remove('show');
+    }
+    evaluarBoton();
+  });
 
-  // ENVÍO DE DATOS
+  // ANTI-TECLADO
+  inputMP.addEventListener('keydown', () => {
+    ultimaTeclaTiempo = Date.now();
+  });
+
+  inputMP.addEventListener('input', (e) => {
+    const tiempoDiferencia = Date.now() - ultimaTeclaTiempo;
+    const val = inputMP.value.toUpperCase().trim();
+    
+    if (tiempoDiferencia > 45 && e.inputType !== "insertFromPaste") {
+      inputMP.value = ""; 
+      inputMP.className = "bloqueado";
+      alertaTeclado.classList.add('show');
+      msgMP.classList.remove('show');
+      evaluarBoton();
+      return; 
+    }
+
+    alertaTeclado.classList.remove('show');
+    const buscado = LISTA_MATERIALES.find(m => m.codigo === val);
+    
+    if (buscado) {
+      inputMP.className = "valido";
+      msgMP.textContent = `✔ ${buscado.desc}`;
+      msgMP.classList.add('show');
+      emitirBeep(true);
+    } else {
+      inputMP.className = val ? "bloqueado" : "";
+      msgMP.classList.remove('show');
+      if (val.length >= 4) emitirBeep(false);
+    }
+    evaluarBoton();
+  });
+
+  // ENVÍO DE DATOS POST CON COMPATIBILIDAD DE TAREAS PLANIFICADAS
   document.getElementById('mpForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const statusBox = document.getElementById('statusBox');
+    
     btnEnviar.disabled = true;
+    statusBox.className = "status";
     statusBox.style.display = "none";
 
     const payload = {
       operador: inputOp.value,
-      materiaprima: inputMP.value,
-      cantidad: parseInt(inputCantidad.value),
-      rack: inputRack.value,
-      box: inputBox.value,
-      movimiento: movimientoTexto.value,
-      idTarea: MODO_ACTUAL === "TAREA" ? selectTarea.value : ""
+      materiaprima: inputMP.value.toUpperCase().trim(),
+      cantidad: parseInt(inputCant.value) || 1, // Manda la cantidad asignada o digitada
+      rack: inputRack.value.trim(),
+      box: inputBox.value.trim(),
+      movimiento: selectMov.value,
+      idTarea: selectTarea.value || "" // Envía el ID de la tarea si existiera
     };
 
     try {
-      await fetch(URL_API, {
+      const response = await fetch(URL_API, {
         method: "POST",
         mode: "no-cors", 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
 
-      statusBox.textContent = "✔ Operación guardada e impactada con éxito.";
+      statusBox.textContent = "✔ Registrado correctamente en Sheet";
       statusBox.className = "status success";
       
-      // Actualización local de stock para evitar recargas constantes de red
-      const factor = payload.movimiento === "ENTRADA" ? payload.cantidad : -payload.cantidad;
-      if (!MAPA_STOCK[payload.materiaprima]) MAPA_STOCK[payload.materiaprima] = [];
-      let ubiLocal = MAPA_STOCK[payload.materiaprima].find(u => u.rack === payload.rack && u.box === payload.box);
-      if(ubiLocal) ubiLocal.stock += factor;
+      // Resetear campos volviendo a habilitar inputs
+      selectTarea.value = "";
+      inputMP.disabled = false;
+      inputCant.disabled = false;
       
-      if(MODO_ACTUAL === "TAREA") {
-        LISTA_TAREAS = LISTA_TAREAS.filter(t => t.id !== selectTarea.value);
-        selectTarea.value = "";
-      } else {
-        inputBuscarCodigo.value = "";
-        infoSugerenciaStock.style.display = "none";
-      }
-      
-      limpiarCampos();
-      inputOp.dispatchEvent(new Event('input'));
+      inputMP.value = "";
+      inputMP.className = "";
+      msgMP.classList.remove('show');
+      inputCant.value = "1";
+      inputRack.value = "";
+      inputBox.value = "";
+      inputMP.focus();
     } catch (err) {
       statusBox.textContent = "❌ Error de conexión: " + err.message;
       statusBox.className = "status error";
