@@ -1,517 +1,244 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>La Emilia S.A. - Sistema de Inventario por Sectores</title>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Captura Materia Prima V2</title>
   <style>
-    :root { 
-      --primary-color: #04847c; 
-      --bg-light: #f3f4f7; 
-      --bg-white: #ffffff; 
-      --accent-purple: #8b5cf6;
-      --accent-blue: #0284c7;
-      --accent-orange: #f59e0b;
-      --secondary-color: #17b978;
+    :root { --primary: #023047; --success: #2a9d8f; --error: #e63946; --bg: #f8f9fa; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; justify-content: center; }
+    .container { width: 100%; max-width: 400px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    h2 { text-align: center; color: var(--primary); margin-top: 0; font-size: 1.4rem; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
+    .form-group { margin-bottom: 12px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--primary); margin-bottom: 4px; }
+    input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+    input:focus, select:focus { border-color: var(--primary); outline: none; }
+    
+    .valido { border-color: var(--success) !important; background-color: #f4fbf7; }
+    .bloqueado { border-color: var(--error) !important; background-color: #fff5f5; animation: shake 0.2s 2; }
+    .mensaje-alerta { font-size: 11px; font-weight: bold; color: var(--error); margin-top: 3px; display: none; }
+    .mensaje-alerta.show { display: block; }
+    .mensaje-ok { font-size: 11px; font-weight: bold; color: var(--success); margin-top: 3px; display: none; }
+    .mensaje-ok.show { display: block; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .status { text-align: center; padding: 10px; margin-top: 10px; border-radius: 4px; display: none; font-weight: bold; }
+    .success { display: block; background: #e8f5e9; color: #2e7d32; }
+    .error { display: block; background: #ffebee; color: #c62828; }
+
+    .sync-banner { background: #fff3cd; color: #856404; text-align: center; padding: 6px; font-size: 11px; font-weight: bold; border-radius: 4px; margin-bottom: 10px; }
+
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+      100% { transform: translateX(0); }
     }
-    body { font-family: 'Segoe UI', sans-serif; background: var(--bg-light); margin: 0; padding-top: 80px; }
-    
-    .menu-bar { position: fixed; top: 0; left: 0; right: 0; background-color: var(--primary-color); display: flex; justify-content: space-between; align-items: center; padding: 10px 30px; z-index: 1000; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-    .logo-text { color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: 1px; font-family: 'Segoe UI', Arial, sans-serif; }
-    .button-group { display: flex; gap: 10px; }
-    .button-group button { background-color: #fff; color: var(--primary-color); border: none; padding: 10px 20px; font-size: 14px; border-radius: 6px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: background 0.2s; }
-    .button-group button:hover { background-color: #e6f3f2; }
-    .button-group button.btn-sync { background-color: var(--secondary-color); color: white; }
-    .button-group button.btn-sync:hover { background-color: #14a366; }
-    
-    .container { background: var(--bg-white); max-width: 1600px; margin: 20px auto; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-    
-    /* Dashboard de Control Superior */
-    #dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px; margin-bottom: 20px; }
-    .dash-card { background: #eef1f8; padding: 15px; border-radius: 8px; border-left: 5px solid var(--primary-color); }
-    .dash-card.sector-card { border-left-color: var(--accent-blue); }
-    .dash-card.quality-card { border-left-color: var(--accent-orange); }
-    
-    .card-title { font-size: 12px; font-weight: bold; color: #5c7c94; text-transform: uppercase; margin-bottom: 8px; }
-    .kpi-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
-    .kpi-row:last-child { border-bottom: none; }
-    .kpi-row span:last-child { font-weight: bold; color: var(--primary-color); }
-    
-    /* Contenedor de Gráficos en paralelo */
-    .charts-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 15px; margin: 20px 0; }
-    .chart-box { background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #eee; height: 260px; position: relative; }
-    .chart-box h4 { margin: 0 0 10px 0; font-size: 14px; color: #333; text-align: center; }
-    .chart-container-inner { height: 210px; position: relative; }
-
-    /* Estructura de Pestañas Sectoriales */
-    .tabs { display: flex; gap: 10px; margin-top: 25px; margin-bottom: 15px; border-bottom: 2px solid #e1e8ed; padding-bottom: 10px; }
-    .tab-btn { background: none; border: none; padding: 10px 20px; font-size: 14px; font-weight: bold; color: #888; cursor: pointer; border-radius: 5px; transition: all 0.2s; }
-    .tab-btn:hover { background-color: #e4e8eb; color: var(--primary-color); }
-    .tab-btn.active { background-color: var(--primary-color); color: white; }
-
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th { background: var(--primary-color); color: white; padding: 12px; text-align: left; position: sticky; top: 70px; z-index: 10;}
-    td { padding: 10px; border-bottom: 1px solid #ddd; }
-    
-    .input-conteo { width: 90px; padding: 8px; border: 2px solid #ddd; border-radius: 5px; text-align: center; font-weight: bold; }
-    .input-conteo:focus { border-color: var(--primary-color); outline: none; background: #f0fff4; }
-    
-    .variance-pos { color: #28a745; font-weight: bold; }
-    .variance-neg { color: #dc3545; font-weight: bold; }
-    .variance-ok { color: var(--primary-color); font-weight: bold; }
-    .cell-time { font-family: monospace; color: #666; font-size: 12px; font-weight: bold; text-align: center; }
-    
-    #searchInput { width: 100%; padding: 12px; margin-top: 20px; border-radius: 8px; border: 2px solid var(--primary-color); box-sizing: border-box; }
-    .loading-status { background: #e0f2fe; color: #0369a1; padding: 12px; border-radius: 8px; font-weight: bold; text-align: center; margin-bottom: 20px; display: none; }
   </style>
 </head>
-
 <body>
 
-<div class="menu-bar">
-    <div class="logo-text">La Emilia S.A.</div>
-    <div class="button-group">
-        <button class="btn-sync" onclick="cargarDesdeGoogleSheets()">🔄 Sincronizar Sheet</button>
-        <button onclick="descargarExcelLimpio()">Guardar Avance en Excel</button>
-    </div>
-</div>
-
 <div class="container">
-    <div id="loadingStatus" class="loading-status">Conectando con Google Sheets y actualizando inventario...</div>
+  <h2>Handheld MP - V2</h2>
+  
+  <div id="syncBanner" class="sync-banner">🔄 Sincronizando listas de materiales y usuarios del Sheet...</div>
 
-    <div id="dashboard">
-      <div class="dash-card">
-        <div class="card-title">Resumen General</div>
-        <div class="kpi-row"><span>Items a Auditar</span><span id="totalItems">0</span></div>
-        <div class="kpi-row"><span>Controlados</span><span id="totalAudited">0</span></div>
-        <div class="kpi-row"><span>Pendientes</span><span id="totalPending">0</span></div>
-        <div class="kpi-row"><span>% Avance Total</span><span id="totalProgress">0%</span></div>
+  <form id="mpForm">
+    <div class="form-group">
+      <label for="operador">Legajo Operador</label>
+      <input type="number" id="operador" required autofocus autocomplete="off" disabled>
+      <div id="msgOperador" class="mensaje-ok"></div>
+    </div>
+    
+    <div class="grid-2">
+      <div class="form-group">
+        <label for="materiaprima">Código MP (¡SÓLO ESCÁNER!)</label>
+        <input type="text" id="materiaprima" required autocomplete="off" style="text-transform:uppercase" placeholder="Gatille código" disabled>
+        <div id="alertaTeclado" class="mensaje-alerta">⚠️ Bloqueado: Use el lector de la handheld</div>
+        <div id="msgMP" class="mensaje-ok"></div>
       </div>
-      
-      <div class="dash-card sector-card">
-        <div class="card-title">Progreso por Sectores</div>
-        <div class="kpi-row"><span>Inyecciones</span><span id="sec-progress-iny" style="color:var(--secondary-color)">0%</span></div>
-        <div class="kpi-row"><span>Asientos</span><span id="sec-progress-asiento" style="color:var(--accent-blue)">0%</span></div>
-        <div class="kpi-row"><span>Integración</span><span id="sec-progress-int" style="color:var(--accent-orange)">0%</span></div>
-        <div class="kpi-row"><span>Espumas ☁️</span><span id="sec-progress-foam" style="color:var(--accent-purple)">0%</span></div>
-      </div>
-
-      <div class="dash-card quality-card">
-        <div class="card-title">Calidad y Desvíos</div>
-        <div class="kpi-row"><span>Sin Diferencias</span><span id="qual-ok">0</span></div>
-        <div class="kpi-row"><span>Con Faltantes</span><span id="qual-neg">0</span></div>
-        <div class="kpi-row"><span>Con Sobrantes</span><span id="qual-pos">0</span></div>
-        <div class="kpi-row"><span>Precisión (IRA)</span><span id="qual-ira">0%</span></div>
+      <div class="form-group">
+        <label for="cantidad">Cantidad</label>
+        <input type="number" id="cantidad" required min="1" value="1" disabled>
       </div>
     </div>
 
-    <div class="charts-grid">
-        <div class="chart-box">
-            <h4>Comparativo de Stock (Primeros 20)</h4>
-            <div class="chart-container-inner"><canvas id="comparativeChart"></canvas></div>
-        </div>
-        <div class="chart-box">
-            <h4>Progreso Global</h4>
-            <div class="chart-container-inner"><canvas id="progressChart"></canvas></div>
-        </div>
-        <div class="chart-box">
-            <h4>Distribución de Desvíos</h4>
-            <div class="chart-container-inner"><canvas id="qualityChart"></canvas></div>
-        </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label for="rack">Calle / Rack</label>
+        <input type="text" id="rack" placeholder="e.g. CALLE 01" required disabled>
+      </div>
+      <div class="form-group">
+        <label for="box">Posición / Box</label>
+        <input type="text" id="box" placeholder="e.g. P 01" required disabled>
+      </div>
     </div>
 
-    <input type="text" id="searchInput" placeholder="Filtrar por código, descripción o ubicación en el sector actual..." oninput="ejecutarFiltro()">
-
-    <div class="tabs">
-        <button class="tab-btn active" onclick="cambiarSector('iny', this)">Inyecciones (<span id="lbl-count-iny">0</span>)</button>
-        <button class="tab-btn" onclick="cambiarSector('asiento', this)">Asientos (<span id="lbl-count-asiento">0</span>)</button>
-        <button class="tab-btn" onclick="cambiarSector('int', this)">Integración (<span id="lbl-count-int">0</span>)</button>
-        <button class="tab-btn foam-btn" onclick="cambiarSector('foam', this)">Espumas ☁️ (<span id="lbl-count-foam">0</span>)</button>
+    <div class="form-group">
+      <label for="tipo_movimiento">Movimiento</label>
+      <select id="tipo_movimiento" disabled>
+        <option value="ENTRADA">Entrada de Stock</option>
+        <option value="SALIDA">Salida de Stock</option>
+      </select>
     </div>
 
-    <table id="resultTable">
-      <thead>
-        <tr>
-          <th>Código</th>
-          <th>Descripción</th>
-          <th>Rack/Box</th>
-          <th>Teórico</th>
-          <th>Contado</th>
-          <th>Diferencia</th>
-          <th style="text-align: center;">Hora</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td colspan="7" style="text-align:center; padding:20px;">Esperando datos de Google Sheets...</td></tr>
-      </tbody>
-    </table>
+    <button type="submit" id="btnEnviar" disabled>REGISTRAR EN SHEET</button>
+  </form>
+  <div id="statusBox" class="status"></div>
 </div>
 
 <script>
-// =========================================================================
-// REEMPLAZÁ ESTA URL COMPLETA CON EL FORMATO EXACTO DE EXPORTACIÓN DIRECTA:
-// Asegurate de cambiar 'TU_ID_DE_DOCUMENTO_AQUI' por la cadena de letras y números de tu Sheet.
-// =========================================================================
-const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ351UvqaHm5c42WFF0oVyTvbGbAyOA0VHMi1XPvDgTRwiPVHrIGH4-Y3kWbEOWG7NcR5cPfkDLEmDW/pub?output=csv';
+  const URL_API = "https://script.google.com/macros/s/AKfycbwQ90PLaA1LuPhtkQIbbnTR745EGp2OSs297fFMZNlKzS4-p33sEF4Xj0--_Fbj2q_g/exec";
 
-let datosBase = [];
-let segmentacionSectores = { iny: [], asiento: [], int: [], foam: [] };
-let sectorActivo = 'iny';
-let queryFiltro = '';
+  // Listas en memoria que se llenarán dinámicamente desde tu Sheet
+  let LISTA_USUARIOS = [];
+  let LISTA_MATERIALES = [];
 
-let chartObj = null;
-let chartProgress = null;
-let chartQuality = null;
+  const inputOp = document.getElementById('operador');
+  const inputMP = document.getElementById('materiaprima');
+  const msgOp = document.getElementById('msgOperador');
+  const msgMP = document.getElementById('msgMP');
+  const alertaTeclado = document.getElementById('alertaTeclado');
+  const btnEnviar = document.getElementById('btnEnviar');
+  const syncBanner = document.getElementById('syncBanner');
 
-// Carga inicial al abrir la página web desde GitHub Pages
-window.onload = function() {
-    cargarDesdeGoogleSheets();
-};
+  let ultimaTeclaTiempo = Date.now();
 
-async function cargarDesdeGoogleSheets() {
-    if (!GOOGLE_SHEET_CSV_URL || GOOGLE_SHEET_CSV_URL.includes('TU_ID_DE_DOCUMENTO_AQUI')) {
-        alert("Atención: Debes configurar tu ID real de Google Sheet en la constante GOOGLE_SHEET_CSV_URL.");
-        return;
+  // ALBRIR LA APP: DESCARGAR LISTAS EN VIVO DE GOOGLE SHEETS
+  window.addEventListener('DOMContentLoaded', async () => {
+    try {
+      // Llamada GET especial pidiendo los maestros
+      const respuesta = await fetch(URL_API + "?cargarMaestros=true");
+      const datosMaestros = await respuesta.json();
+      
+      LISTA_USUARIOS = datosMaestros.usuarios || [];
+      LISTA_MATERIALES = datosMaestros.materiales || [];
+      
+      // Ocultar banner de carga y habilitar el formulario
+      syncBanner.style.display = 'none';
+      document.querySelectorAll('#mpForm input, #mpForm select').forEach(el => el.disabled = false);
+      inputOp.focus();
+      
+    } catch (err) {
+      syncBanner.style.backgroundColor = '#f8d7da';
+      syncBanner.style.color = '#721c24';
+      syncBanner.textContent = '❌ Error de red: No se pudo descargar el catálogo de materiales.';
+    }
+  });
+
+  // AUDIO DE FEEDBACK NATIVO
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  function emitirBeep(esOk) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    if(esOk) {
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    } else {
+      osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.35);
+    }
+  }
+
+  function evaluarBoton() {
+    const opOk = inputOp.classList.contains('valido');
+    const mpOk = inputMP.classList.contains('valido');
+    btnEnviar.disabled = !(opOk && mpOk);
+  }
+
+  // VALIDACIÓN DE OPERADOR
+  inputOp.addEventListener('input', () => {
+    const val = inputOp.value.trim();
+    const buscado = LISTA_USUARIOS.find(u => u.legajo === val);
+    if (buscado) {
+      inputOp.className = "valido";
+      msgOp.textContent = `✔ Operario: ${buscado.nombre}`;
+      msgOp.classList.add('show');
+    } else {
+      inputOp.className = val ? "bloqueado" : "";
+      msgOp.classList.remove('show');
+    }
+    evaluarBoton();
+  });
+
+  // ANTI-TECLADO: CONTROL DE VELOCIDAD POR MILISEGUNDOS
+  inputMP.addEventListener('keydown', () => {
+    ultimaTeclaTiempo = Date.now();
+  });
+
+  inputMP.addEventListener('input', (e) => {
+    const tiempoDiferencia = Date.now() - ultimaTeclaTiempo;
+    const val = inputMP.value.toUpperCase().trim();
+    
+    if (tiempoDiferencia > 45 && e.inputType !== "insertFromPaste") {
+      inputMP.value = ""; 
+      inputMP.className = "bloqueado";
+      alertaTeclado.classList.add('show');
+      msgMP.classList.remove('show');
+      evaluarBoton();
+      return; 
     }
 
-    const loader = document.getElementById('loadingStatus');
-    loader.style.display = 'block';
+    alertaTeclado.classList.remove('show');
+    const buscado = LISTA_MATERIALES.find(m => m.codigo === val);
+    
+    if (buscado) {
+      inputMP.className = "valido";
+      msgMP.textContent = `✔ ${buscado.desc}`;
+      msgMP.classList.add('show');
+      emitirBeep(true);
+    } else {
+      inputMP.className = val ? "bloqueado" : "";
+      msgMP.classList.remove('show');
+      if (val.length >= 4) emitirBeep(false);
+    }
+    evaluarBoton();
+  });
+
+  // ENVÍO DE DATOS POST ORIGINAL
+  document.getElementById('mpForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const statusBox = document.getElementById('statusBox');
+    
+    btnEnviar.disabled = true;
+    statusBox.className = "status";
+    statusBox.style.display = "none";
+
+    const payload = {
+      operador: inputOp.value,
+      materiaprima: inputMP.value.toUpperCase().trim(),
+      cantidad: parseInt(document.getElementById('cantidad').value),
+      rack: document.getElementById('rack').value.trim(),
+      box: document.getElementById('box').value.trim(),
+      movimiento: document.getElementById('tipo_movimiento').value
+    };
 
     try {
-        const response = await fetch(GOOGLE_SHEET_CSV_URL);
-        if (!response.ok) throw new Error("Error en la respuesta del servidor de Google.");
-        
-        const dataText = await response.text();
-        
-        // CORRECCIÓN CLAVE: Obligamos a la librería a tratar el texto plano crudo como CSV delimitado
-        const wb = XLSX.read(dataText, { type: 'string', raw: true });
-        const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-        
-        if (!json || json.length === 0) {
-            throw new Error("El archivo CSV se leyó vacío o el formato de las columnas no coincide.");
-        }
-        
-        procesarDatos(json);
-    } catch (error) {
-        console.error(error);
-        alert("Error al procesar Google Sheets. Verifica que tu documento tenga permisos 'Cualquier persona con el enlace' y que la URL termine estrictamente en '/export?format=csv'.");
-        const tbody = document.querySelector('#resultTable tbody');
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:red;">Error de sincronización. Revisa la consola o el enlace configurado.</td></tr>`;
+      const response = await fetch(URL_API, {
+        method: "POST",
+        mode: "no-cors", 
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      statusBox.textContent = "✔ Registrado correctamente en Sheet";
+      statusBox.className = "status success";
+      
+      inputMP.value = "";
+      inputMP.className = "";
+      msgMP.classList.remove('show');
+      document.getElementById('cantidad').value = "1";
+      inputMP.focus();
+    } catch (err) {
+      statusBox.textContent = "❌ Error de conexión: " + err.message;
+      statusBox.className = "status error";
     } finally {
-        loader.style.display = 'none';
+      evaluarBoton();
     }
-}
-
-function procesarDatos(json) {
-    const map = {};
-    json.forEach(item => {
-        const cod = String(item['Codigo']||item['Código']||'').trim().toUpperCase();
-        const rack = String(item['Rack']||'').trim().toUpperCase();
-        const box = String(item['Box']||'').trim().toUpperCase();
-        const key = `${cod}|${rack}/${box}`;
-        if(!cod || rack === "") return;
-        
-        if(!map[key]) {
-            map[key] = { 
-                codigo: cod, 
-                desc: item['Descripción']||item['Descripcion']||'', 
-                loc: `${rack} / ${box}`, 
-                teorico: 0, 
-                contado: 0, 
-                hayConteo: false,
-                hora: '',
-                esEspuma: false
-            };
-        }
-        map[key].teorico += (parseFloat(item['Entrada de Stock']||item['Entradas']||item['Entrada'])||0) + (parseFloat(item['Salida de Stock']||item['Salidas']||item['Salida'])||0);
-    });
-    
-    datosBase = Object.values(map).filter(d => d.teorico > 0);
-    datosBase.sort((a,b) => a.loc.localeCompare(b.loc, undefined, {numeric: true}));
-    
-    clasificarSectores();
-    renderTodo();
-}
-
-function clasificarSectores() {
-    segmentacionSectores = { iny: [], asiento: [], int: [], foam: [] };
-    
-    datosBase.forEach(item => {
-        const cod = item.codigo.toUpperCase();
-        const desc = item.desc.toUpperCase();
-        const ubi = item.loc.toUpperCase();
-
-        if (cod.includes('ESPUMA') || desc.includes('ESPUMA') || ubi.includes('ESPUMA')) {
-            item.esEspuma = true;
-            segmentacionSectores.foam.push(item);
-        } 
-        else if (
-            cod.startsWith('MPR') || cod.startsWith('CLG') || cod.startsWith('CLC') || 
-            cod.startsWith('CLR') || cod.startsWith('PIN') || cod.startsWith('KPPPS') ||
-            cod.startsWith('FILT') || cod.startsWith('INY') || desc.includes('LATERAL') ||
-            desc.includes('ESCUDO') || desc.includes('GUARDABARRO') || desc.includes('CUBRECADENAS') ||
-            desc.includes('FILTRO') || desc.includes('BASE DE ASIENTO') || desc.includes('BAJO ASIENTO') ||
-            desc.includes('COLÍN') || desc.includes('COLIN')
-        ) {
-            segmentacionSectores.iny.push(item);
-        }
-        else if (ubi.includes('CALLE') || ubi.includes('MUELLE') || ubi.includes('CALDERA')) {
-            segmentacionSectores.int.push(item);
-        }
-        else if (
-            cod.includes('ASIENTO') || desc.includes('ASIENTO') || ubi.includes('ASIENTO') ||
-            cod.startsWith('AMB') || cod.startsWith('ATS') || cod.startsWith('ASJOY') || 
-            cod.startsWith('AMD') || cod.startsWith('AID') || cod.startsWith('AIS') || 
-            cod.startsWith('ASZ') || cod.startsWith('ABT') || cod.startsWith('ABK') || 
-            cod.startsWith('AB3') || cod.startsWith('AML')
-        ) {
-            segmentacionSectores.asiento.push(item);
-        }
-        else {
-            segmentacionSectores.iny.push(item);
-        }
-    });
-
-    document.getElementById('lbl-count-iny').textContent = segmentacionSectores.iny.length;
-    document.getElementById('lbl-count-asiento').textContent = segmentacionSectores.asiento.length;
-    document.getElementById('lbl-count-int').textContent = segmentacionSectores.int.length;
-    document.getElementById('lbl-count-foam').textContent = segmentacionSectores.foam.length;
-}
-
-function cambiarSector(sector, btn) {
-    sectorActivo = sector;
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    renderTodo();
-}
-
-function ejecutarFiltro() {
-    queryFiltro = document.getElementById('searchInput').value.toLowerCase();
-    renderTodo();
-}
-
-function obtenerDatosVisiblesActuales() {
-    const listaSector = segmentacionSectores[sectorActivo] || [];
-    if(!queryFiltro) return listaSector;
-    return listaSector.filter(d => d.codigo.toLowerCase().includes(queryFiltro) || d.desc.toLowerCase().includes(queryFiltro) || d.loc.toLowerCase().includes(queryFiltro));
-}
-
-function renderTodo() {
-    const tbody = document.querySelector('#resultTable tbody');
-    tbody.innerHTML = '';
-    
-    const visibles = obtenerDatosVisiblesActuales();
-    
-    if(visibles.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px;">No se encontraron registros en este sector.</td></tr>`;
-        actualizarDashboard();
-        initOrUpdateCharts();
-        return;
-    }
-
-    visibles.forEach((item, i) => {
-        const dif = item.hayConteo ? (item.contado - item.teorico) : '';
-        let cl = "";
-        if(item.hayConteo) {
-            if(dif > 0) cl = "variance-pos";
-            else if(dif < 0) cl = "variance-neg";
-            else cl = "variance-ok";
-        }
-
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${item.codigo}</td><td>${item.desc}</td><td>${item.loc}</td><td>${item.teorico}</td>
-            <td><input type="number" class="input-conteo" value="${item.hayConteo ? item.contado : ''}" oninput="actualizarValores('${item.codigo}|${item.loc}', this.value, ${i})" onkeydown="saltarFila(event, ${i})"></td>
-            <td id="dif-row-${i}" class="${cl}">${dif}</td>
-            <td id="time-row-${i}" class="cell-time">${item.hora}</td>`;
-        tbody.appendChild(tr);
-    });
-    
-    actualizarDashboard();
-    initOrUpdateCharts();
-}
-
-function actualizarValores(key, val, i) {
-    const item = datosBase.find(d => `${d.codigo}|${d.loc}` === key);
-    if(!item) return;
-
-    const tdDif = document.getElementById(`dif-row-${i}`);
-    const tdTime = document.getElementById(`time-row-${i}`);
-    
-    if(val === "") {
-        item.hayConteo = false;
-        item.contado = 0;
-        item.hora = '';
-        if(tdDif) { tdDif.textContent = ""; tdDif.className = ""; }
-        if(tdTime) { tdTime.textContent = ""; }
-    } else {
-        item.contado = parseInt(val);
-        item.hayConteo = true;
-        
-        if (item.hora === '') {
-            const ahora = new Date();
-            item.hora = ahora.toLocaleTimeString();
-        }
-        
-        const diferencia = item.contado - item.teorico;
-        
-        if(tdDif) {
-            tdDif.textContent = diferencia;
-            if(diferencia > 0) tdDif.className = "variance-pos";
-            else if(diferencia < 0) tdDif.className = "variance-neg";
-            else tdDif.className = "variance-ok";
-        }
-        if(tdTime) {
-            tdTime.textContent = item.hora;
-        }
-    }
-
-    actualizarDashboard();
-    initOrUpdateCharts();
-}
-
-function saltarFila(e, i) {
-    if(e.key === "Enter") {
-        e.preventDefault();
-        const inputs = document.querySelectorAll('.input-conteo');
-        if(inputs[i+1]) { inputs[i+1].focus(); inputs[i+1].select(); }
-    }
-}
-
-function calcularAvanceSector(lista) {
-    if(lista.length === 0) return 0;
-    const contados = lista.filter(d => d.hayConteo).length;
-    return ((contados / lista.length) * 100).toFixed(0);
-}
-
-function actualizarDashboard() {
-    const validosKpi = datosBase.filter(d => !d.esEspuma);
-    const totalA = validosKpi.length;
-    const controlados = validosKpi.filter(d => d.hayConteo).length;
-    const pendientes = totalA - controlados;
-    const avance = totalA > 0 ? ((controlados / totalA) * 100).toFixed(0) : 0;
-
-    let sinDif = 0, faltantes = 0, sobrantes = 0;
-    validosKpi.forEach(d => {
-        if(d.hayConteo) {
-            const dif = d.contado - d.teorico;
-            if(dif === 0) sinDif++;
-            else if(dif < 0) faltantes++;
-            else sobrantes++;
-        }
-    });
-    const ira = controlados > 0 ? ((sinDif / controlados) * 100).toFixed(0) : 0;
-
-    document.getElementById('totalItems').textContent = totalA;
-    document.getElementById('totalAudited').textContent = controlados;
-    document.getElementById('totalPending').textContent = pendientes;
-    document.getElementById('totalProgress').textContent = `${avance}%`;
-
-    document.getElementById('sec-progress-iny').textContent = `${calcularAvanceSector(segmentacionSectores.iny)}%`;
-    document.getElementById('sec-progress-asiento').textContent = `${calcularAvanceSector(segmentacionSectores.asiento)}%`;
-    document.getElementById('sec-progress-int').textContent = `${calcularAvanceSector(segmentacionSectores.int)}%`;
-    document.getElementById('sec-progress-foam').textContent = `${calcularAvanceSector(segmentacionSectores.foam)}%`;
-
-    document.getElementById('qual-ok').textContent = sinDif;
-    document.getElementById('qual-neg').textContent = faltantes;
-    document.getElementById('qual-pos').textContent = sobrantes;
-    document.getElementById('qual-ira').textContent = `${ira}%`;
-}
-
-function initOrUpdateCharts() {
-    const visibles = obtenerDatosVisiblesActuales().slice(0, 20);
-    const ctxBar = document.getElementById('comparativeChart').getContext('2d');
-    const bgColors = visibles.map(d => !d.hayConteo ? 'rgba(200,200,200,0.5)' : (d.contado === d.teorico ? 'rgba(4,132,124,0.7)' : 'rgba(255,107,107,0.7)'));
-    
-    if (chartObj) {
-        chartObj.data.labels = visibles.map(d => d.codigo);
-        chartObj.data.datasets[0].data = visibles.map(d => d.teorico);
-        chartObj.data.datasets[1].data = visibles.map(d => d.hayConteo ? d.contado : 0);
-        chartObj.data.datasets[1].backgroundColor = bgColors;
-        chartObj.update('none'); 
-    } else {
-        chartObj = new Chart(ctxBar, {
-            type: 'bar',
-            data: {
-                labels: visibles.map(d => d.codigo),
-                datasets: [{ label: 'Sistema', data: visibles.map(d => d.teorico), backgroundColor: 'rgba(53,95,180,0.4)' },
-                           { label: 'Contado', data: visibles.map(d => d.hayConteo ? d.contado : 0), backgroundColor: bgColors }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
-    }
-
-    const validosKpi = datosBase.filter(d => !d.esEspuma);
-    const controlados = validosKpi.filter(d => d.hayConteo).length;
-    const pendientes = validosKpi.length - controlados;
-
-    let sinDif = 0, faltantes = 0, sobrantes = 0;
-    validosKpi.forEach(d => {
-        if(d.hayConteo) {
-            const dif = d.contado - d.teorico;
-            if(dif === 0) sinDif++;
-            else if(dif < 0) faltantes++;
-            else sobrantes++;
-        }
-    });
-
-    const ctxProg = document.getElementById('progressChart').getContext('2d');
-    if(chartProgress) {
-        chartProgress.data.datasets[0].data = [controlados, pendientes];
-        chartProgress.update('none');
-    } else {
-        chartProgress = new Chart(ctxProg, {
-            type: 'doughnut',
-            data: {
-                labels: ['Controlados', 'Pendientes'],
-                datasets: [{ data: [controlados, pendientes], backgroundColor: ['#17b978', '#e1e8ed'] }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-        });
-    }
-
-    const ctxQual = document.getElementById('qualityChart').getContext('2d');
-    if(chartQuality) {
-        chartQuality.data.datasets[0].data = [sinDif, faltantes, sobrantes];
-        chartQuality.update('none');
-    } else {
-        chartQuality = new Chart(ctxQual, {
-            type: 'bar',
-            data: {
-                labels: ['OK', 'Faltante', 'Sobrante'],
-                datasets: [{ data: [sinDif, faltantes, sobrantes], backgroundColor: ['#04847c', '#dc3545', '#f59e0b'] }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-        });
-    }
-}
-
-function descargarExcelLimpio() {
-    if(datosBase.length === 0) {
-        alert("No hay datos cargados para exportar.");
-        return;
-    }
-    
-    const rowsExcel = datosBase.map(d => ({
-        "Código": d.codigo,
-        "Descripción": d.desc,
-        "Ubicación (Rack/Box)": d.loc,
-        "Stock Teórico": d.teorico,
-        "Cantidad Contada": d.hayConteo ? d.contado : 0,
-        "Diferencia": d.hayConteo ? (d.contado - d.teorico) : 0,
-        "Hora Conteo": d.hora || '-'
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(rowsExcel);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario Ciclos");
-
-    const fecha = new Date().toISOString().slice(0,10);
-    XLSX.writeFile(workbook, `Inventario_LaEmilia_${fecha}.xlsx`);
-}
+  });
 </script>
 </body>
 </html>
