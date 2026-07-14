@@ -5,10 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Captura Materia Prima V2</title>
   <style>
-    :root { --primary: #023047; --success: #2a9d8f; --error: #e63946; --bg: #f8f9fa; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; justify-content: center; }
-    .container { width: 100%; max-width: 400px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    h2 { text-align: center; color: var(--primary); margin-top: 0; font-size: 1.4rem; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
+    :root { 
+      --primary: #1d3557; 
+      --success: #2a9d8f; 
+      --error: #e63946; 
+      --bg: #f1faee; 
+    }
+    body { 
+      font-family: system-ui, -apple-system, sans-serif; 
+      background: var(--bg); 
+      margin: 0; 
+      padding: 10px; 
+      display: flex; 
+      justify-content: center; 
+    }
+    .container { 
+      width: 100%; 
+      max-width: 400px; 
+      background: #fff; 
+      padding: 15px; 
+      border-radius: 8px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
+    }
+    h2 { 
+      text-align: center; 
+      color: var(--primary); 
+      margin-top: 0; 
+      font-size: 1.4rem; 
+      border-bottom: 2px solid var(--bg); 
+      padding-bottom: 10px; 
+    }
     .form-group { margin-bottom: 12px; }
     label { display: block; font-size: 12px; font-weight: 600; color: var(--primary); margin-bottom: 4px; }
     input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
@@ -23,7 +49,9 @@
 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    button:hover { background: #457b9d; }
     button:disabled { background: #ccc; cursor: not-allowed; }
+    
     .status { text-align: center; padding: 10px; margin-top: 10px; border-radius: 4px; display: none; font-weight: bold; }
     .status.success { display: block; background: #e8f5e9; color: #2e7d32; }
     .status.error { display: block; background: #ffebee; color: #c62828; }
@@ -126,7 +154,6 @@
 
   let ultimaTeclaTiempo = Date.now();
 
-  // AL ABRIR LA APP: DESCARGAR LISTAS EN VIVO DE GOOGLE SHEETS
   async function inicializarMaestros() {
     try {
       const respuesta = await fetch(URL_API + "?cargarMaestros=true");
@@ -136,7 +163,6 @@
       LISTA_MATERIALES = datosMaestros.materiales || [];
       LISTA_TAREAS = datosMaestros.tareas || [];
       
-      // Poblar el combo de tareas planificadas
       selectTarea.innerHTML = '<option value="">-- Cargar de forma Manual --</option>';
       LISTA_TAREAS.forEach(t => {
         const opt = document.createElement('option');
@@ -145,7 +171,6 @@
         selectTarea.appendChild(opt);
       });
 
-      // Ocultar banner de carga y habilitar el formulario
       syncBanner.style.display = 'none';
       document.querySelectorAll('#mpForm input, #mpForm select, #selectTarea').forEach(el => el.disabled = false);
       inputOp.focus();
@@ -159,7 +184,6 @@
 
   window.addEventListener('DOMContentLoaded', inicializarMaestros);
 
-  // AUDIO DE FEEDBACK NATIVO
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   function emitirBeep(esOk) {
     const osc = audioCtx.createOscillator();
@@ -182,11 +206,9 @@
     btnEnviar.disabled = !(opOk && mpOk && rackOk && boxOk);
   }
 
-  // EVENTO AL SELECCIONAR UNA TAREA PLANIFICADA
   selectTarea.addEventListener('change', () => {
     const idSel = selectTarea.value;
     if (!idSel) {
-      // Si vuelve a Manual, se resetean y desbloquean las propiedades
       idTareaSeleccionada = null;
       infoTarea.style.display = 'none';
       inputMP.value = "";
@@ -207,11 +229,10 @@
     if (tarea) {
       idTareaSeleccionada = tarea.id;
       
-      // Auto-completar y bloquear los campos definidos desde la oficina
       inputMP.value = tarea.codigo;
       inputMP.disabled = true;
       
-      inputCantidad.value = tarea.cant; // Carga la cantidad asignada automáticamente
+      inputCantidad.value = tarea.cant;
       inputCantidad.disabled = true;
       
       selectMovimiento.value = "ENTRADA"; 
@@ -223,7 +244,6 @@
       infoTarea.innerHTML = `<strong>Descripción:</strong> ${tarea.desc}<br><strong>Cant. Planificada:</strong> ${tarea.cant}`;
       infoTarea.style.display = 'block';
 
-      // Forzar validación visual de la MP cargada por la tarea
       const mat = LISTA_MATERIALES.find(m => m.codigo === tarea.codigo);
       if (mat) {
         inputMP.className = "valido";
@@ -235,7 +255,6 @@
     }
   });
 
-  // VALIDACIÓN DE OPERADOR
   inputOp.addEventListener('input', () => {
     const val = inputOp.value.trim();
     const buscado = LISTA_USUARIOS.find(u => u.legajo === val);
@@ -250,17 +269,14 @@
     evaluarBoton();
   });
 
-  // RACK Y BOX COMPORTAMIENTO DE ESCUCHA
   inputRack.addEventListener('input', evaluarBoton);
   inputBox.addEventListener('input', evaluarBoton);
 
-  // ANTI-TECLADO: CONTROL DE VELOCIDAD POR MILISEGUNDOS
   inputMP.addEventListener('keydown', () => {
     ultimaTeclaTiempo = Date.now();
   });
 
   inputMP.addEventListener('input', (e) => {
-    // Si el campo está bloqueado (por tarea planificada), no evaluar velocidad
     if (inputMP.disabled) return;
 
     const tiempoDiferencia = Date.now() - ultimaTeclaTiempo;
@@ -291,7 +307,6 @@
     evaluarBoton();
   });
 
-  // ENVÍO DE DATOS POST CON EL ID DE TAREA Y CANTIDAD AUTOMÁTICA
   document.getElementById('mpForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const statusBox = document.getElementById('statusBox');
@@ -307,7 +322,7 @@
       rack: inputRack.value.trim(),
       box: inputBox.value.trim(),
       movimiento: selectMovimiento.value,
-      idTarea: idTareaSeleccionada // Viajará con el ID único o null si es manual
+      idTarea: idTareaSeleccionada
     };
 
     try {
@@ -322,7 +337,6 @@
       statusBox.className = "status success";
       emitirBeep(true);
       
-      // Limpiar y restaurar formulario
       idTareaSeleccionada = null;
       infoTarea.style.display = 'none';
       
@@ -343,7 +357,6 @@
       
       inputMP.focus();
       
-      // Recargar maestros para remover la tarea procesada del selector
       inicializarMaestros();
     } catch (err) {
       statusBox.textContent = "❌ Error de conexión: " + err.message;
