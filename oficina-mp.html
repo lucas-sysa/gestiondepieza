@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Oficina - Asignación de Ingresos</title>
   <style>
-    :root { --primary: #1d3557; --success: #2a9d8f; --bg: #f1faee; }
-    body { font-family: system-ui, sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
-    .card { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    :root { --primary: #1d3557; --success: #2a9d8f; --error: #e63946; --bg: #f1faee; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    .card { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); box-sizing: border-box; }
+    .card-tabla { width: 100%; max-width: 850px; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); box-sizing: border-box; }
     h2 { color: var(--primary); margin-top:0; text-align: center; border-bottom: 2px solid #e63946; padding-bottom: 10px;}
     .form-group { margin-bottom: 15px; }
     label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: var(--primary); }
@@ -15,10 +16,19 @@
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
     button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
     button:hover { background: #457b9d; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
     .status { text-align: center; padding: 10px; margin-top: 15px; border-radius: 4px; display: none; font-weight: bold; }
     .success { display: block; background: #e8f5e9; color: #2e7d32; }
     .error { display: block; background: #ffebee; color: #c62828; }
     .loading-banner { background: #fff3cd; color: #856404; text-align: center; padding: 8px; border-radius: 4px; font-size: 13px; font-weight: bold; margin-bottom: 15px; }
+    
+    /* Estilos para el visor de la tabla */
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #f1f3f5; color: var(--primary); }
+    .btn-eliminar { background-color: var(--error); color: white; padding: 6px 10px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; margin-top: 0; width: auto; }
+    .btn-eliminar:hover { background-color: #c62828; }
+    .badge-pendiente { background: #fff3cd; color: #856404; padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; }
   </style>
 </head>
 <body>
@@ -60,12 +70,32 @@
   <div id="statusBox" class="status"></div>
 </div>
 
+<div class="card-tabla">
+  <h2>Tareas Activas (Pendientes)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID Tarea</th>
+        <th>Código MP</th>
+        <th>Descripción</th>
+        <th>Cantidad</th>
+        <th>Ubicación</th>
+        <th>Estado</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody id="cuerpoTablaTareas">
+      <tr><td colspan="7" style="text-align: center; color: #666;">Cargando tareas activas...</td></tr>
+    </tbody>
+  </table>
+</div>
+
 <script>
-  // REEMPLAZAR AQUÍ CON TU URL /EXEC DE GOOGLE APPS SCRIPT
   const URL_API = "https://script.google.com/macros/s/AKfycbyZlEck5rqAxp1c_oYmB0hqzyeOP3ozWRkbn0-4Aa-mnFE8YAfqlm4JEYdaV7roNHAMXQ/exec";
 
   let LISTA_MATERIALES = [];
   let LISTA_UBICACIONES = [];
+  let LISTA_TAREAS_ACTIVAS = [];
 
   const selectMP = document.getElementById('materiaprima');
   const selectRack = document.getElementById('rack');
@@ -73,6 +103,32 @@
   const loadingBanner = document.getElementById('loadingBanner');
   const statusBox = document.getElementById('statusBox');
   const btnAsignar = document.getElementById('btnAsignar');
+  const cuerpoTablaTareas = document.getElementById('cuerpoTablaTareas');
+
+  // Dibuja las tareas vigentes descargadas del Sheet
+  function renderizarTablaTareas() {
+    if (LISTA_TAREAS_ACTIVAS.length === 0) {
+      cuerpoTablaTareas.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #666;">No hay tareas pendientes en este momento.</td></tr>';
+      return;
+    }
+
+    cuerpoTablaTareas.innerHTML = "";
+    LISTA_TAREAS_ACTIVAS.forEach(tarea => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><small>${tarea.id}</small></td>
+        <td><strong>${tarea.codigo}</strong></td>
+        <td>${tarea.desc}</td>
+        <td>${tarea.cant}</td>
+        <td><small>${tarea.rack} - ${tarea.box}</small></td>
+        <td><span class="badge-pendiente">PENDIENTE</span></td>
+        <td>
+          <button class="btn-eliminar" onclick="eliminarTarea('${tarea.id}')">❌ Eliminar</button>
+        </td>
+      `;
+      cuerpoTablaTareas.appendChild(tr);
+    });
+  }
 
   window.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -81,8 +137,10 @@
       
       LISTA_MATERIALES = datos.materiales || [];
       LISTA_UBICACIONES = datos.ubicaciones || [];
+      LISTA_TAREAS_ACTIVAS = datos.tareas || [];
 
       // Llenar materiales ordenados
+      selectMP.innerHTML = '<option value="">-- Elija un material --</option>';
       LISTA_MATERIALES.sort((a,b) => a.codigo.localeCompare(b.codigo)).forEach(m => {
         const opt = document.createElement('option');
         opt.value = m.codigo;
@@ -91,12 +149,16 @@
       });
 
       // Llenar Racks únicos
+      selectRack.innerHTML = '<option value="">-- Calle --</option>';
       const racksUnicos = [...new Set(LISTA_UBICACIONES.map(u => u.rack))].sort();
       racksUnicos.forEach(r => {
         const opt = document.createElement('option');
         opt.value = r; opt.textContent = r;
         selectRack.appendChild(opt);
       });
+
+      // Dibujar la tabla
+      renderizarTablaTareas();
 
       loadingBanner.style.display = 'none';
       document.querySelectorAll('#oficinaForm input, #oficinaForm select').forEach(el => el.disabled = false);
@@ -135,7 +197,6 @@
     };
 
     try {
-      // Envío POST usando no-cors compatible con Google Apps Script redirecciones
       await fetch(URL_API, {
         method: "POST",
         mode: "no-cors",
@@ -147,6 +208,12 @@
       statusBox.className = "status success";
       document.getElementById('cantidad').value = "1";
       selectMP.value = ""; selectRack.value = ""; selectBox.innerHTML = '<option value="">-- Box --</option>';
+      
+      // Actualizar listado completo para ver el registro inmediato abajo
+      const respuesta = await fetch(URL_API + "?cargarMaestros=true");
+      const datos = await respuesta.json();
+      LISTA_TAREAS_ACTIVAS = datos.tareas || [];
+      renderizarTablaTareas();
     } catch (err) {
       statusBox.textContent = "❌ Error al guardar tarea.";
       statusBox.className = "status error";
@@ -154,6 +221,30 @@
       btnAsignar.disabled = false;
     }
   });
+
+  // FUNCIÓN PARA ELIMINAR SIN BORRAR LA FILA FÍSICAMENTE EN EL SHEET
+  async function eliminarTarea(idTarea) {
+    if (!confirm(`¿Está seguro de que desea eliminar la tarea ${idTarea}?`)) return;
+
+    try {
+      await fetch(URL_API, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accion: "eliminarTarea",
+          idTarea: idTarea
+        })
+      });
+
+      // Eliminar del frontend inmediatamente para dar respuesta al usuario
+      LISTA_TAREAS_ACTIVAS = LISTA_TAREAS_ACTIVAS.filter(t => t.id !== idTarea);
+      renderizarTablaTareas();
+      alert(`✔ Tarea ${idTarea} removida de la vista.`);
+    } catch (error) {
+      alert("❌ Error de red al intentar eliminar la tarea.");
+    }
+  }
 </script>
 </body>
 </html>
