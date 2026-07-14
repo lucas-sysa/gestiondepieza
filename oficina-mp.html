@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Oficina - Asignación de Ingresos</title>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root { 
       --primary: #1d3557; 
@@ -35,15 +36,21 @@
       margin-top: 10px;
     }
 
-    .card { 
+    .card-left {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
       width: 100%; 
       max-width: 450px; 
+      flex-shrink: 0;
+    }
+
+    .card { 
       background: white; 
       padding: 25px; 
       border-radius: 8px; 
       box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
       box-sizing: border-box; 
-      flex-shrink: 0;
     }
 
     .card-tabla { 
@@ -86,51 +93,69 @@
 
     .badge-pendiente { background: #fff3cd; color: #856404; padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; }
 
+    /* Estilo del contenedor del gráfico */
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 230px;
+    }
+
     @media (max-width: 1024px) {
       .dashboard-container { flex-direction: column; align-items: center; }
-      .card, .card-tabla { max-width: 100%; }
+      .card-left, .card-tabla { max-width: 100%; }
     }
   </style>
 </head>
 <body>
 
-<div id="loadingBanner" class="loading-banner">🔄 Sincronizando catálogos de materiales y ubicaciones...</div>
+<div id="loadingBanner" class="loading-banner">🔄 Sincronizando catálogos de materiales, ubicaciones y métricas...</div>
 
 <div class="dashboard-container">
 
-  <div class="card">
-    <h2>Control de Oficina: Crear Tarea</h2>
-    <form id="oficinaForm">
-      <div class="form-group">
-        <label for="materiaprima">Seleccionar Materia Prima</label>
-        <select id="materiaprima" required disabled>
-          <option value="">-- Elija un material --</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="cantidad">Cantidad a Ingresar</label>
-        <input type="number" id="cantidad" min="1" value="1" required disabled>
-      </div>
-
-      <div class="grid-2">
+  <div class="card-left">
+    
+    <div class="card">
+      <h2>Control de Oficina: Crear Tarea</h2>
+      <form id="oficinaForm">
         <div class="form-group">
-          <label for="rack">Calle / Rack Destino</label>
-          <select id="rack" required disabled>
-            <option value="">-- Calle --</option>
+          <label for="materiaprima">Seleccionar Materia Prima</label>
+          <select id="materiaprima" required disabled>
+            <option value="">-- Elija un material --</option>
           </select>
         </div>
-        <div class="form-group">
-          <label for="box">Posición / Box Destino</label>
-          <select id="box" required disabled>
-            <option value="">-- Box --</option>
-          </select>
-        </div>
-      </div>
 
-      <button type="submit" id="btnAsignar" disabled>ASIGNAR TAREA A HANDHELD</button>
-    </form>
-    <div id="statusBox" class="status"></div>
+        <div class="form-group">
+          <label for="cantidad">Cantidad a Ingresar</label>
+          <input type="number" id="cantidad" min="1" value="1" required disabled>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="rack">Calle / Rack Destino</label>
+            <select id="rack" required disabled>
+              <option value="">-- Calle --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="box">Posición / Box Destino</label>
+            <select id="box" required disabled>
+              <option value="">-- Box --</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" id="btnAsignar" disabled>ASIGNAR TAREA A HANDHELD</button>
+      </form>
+      <div id="statusBox" class="status"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="border-bottom: 2px solid var(--print-btn);">Estado de Tareas</h2>
+      <div class="chart-container">
+        <canvas id="graficoEstados"></canvas>
+      </div>
+    </div>
+
   </div>
 
   <div class="card-tabla">
@@ -161,6 +186,7 @@
   let LISTA_MATERIALES = [];
   let LISTA_UBICACIONES = [];
   let LISTA_TAREAS_ACTIVAS = [];
+  let miGrafico = null; 
 
   const selectMP = document.getElementById('materiaprima');
   const selectRack = document.getElementById('rack');
@@ -169,6 +195,54 @@
   const statusBox = document.getElementById('statusBox');
   const btnAsignar = document.getElementById('btnAsignar');
   const cuerpoTablaTareas = document.getElementById('cuerpoTablaTareas');
+
+  function actualizarGrafico(pendientes, ingresados, eliminados) {
+    const ctx = document.getElementById('graficoEstados').getContext('2d');
+
+    if (miGrafico) {
+      miGrafico.data.datasets[0].data = [pendientes, ingresados, eliminados];
+      miGrafico.update();
+    } else {
+      miGrafico = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Pendientes', 'Ingresados', 'Eliminados'],
+          datasets: [{
+            label: 'Cantidad de Tareas',
+            data: [pendientes, ingresados, eliminados],
+            backgroundColor: [
+              '#fff3cd', // Amarillo pastel (Pendientes)
+              '#2a9d8f', // Verde esmeralda (Ingresados)
+              '#e63946'  // Rojo coral (Eliminados)
+            ],
+            borderColor: [
+              '#856404', 
+              '#1e7167', 
+              '#b52a35'
+            ],
+            borderWidth: 1.5,
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1, 
+                precision: 0
+              }
+            }
+          }
+        }
+      });
+    }
+  }
 
   function renderizarTablaTareas() {
     if (LISTA_TAREAS_ACTIVAS.length === 0) {
@@ -179,8 +253,6 @@
     cuerpoTablaTareas.innerHTML = "";
     LISTA_TAREAS_ACTIVAS.forEach(tarea => {
       const tr = document.createElement('tr');
-      
-      // Sanitización rápida de descripción para pasarla sin problemas por atributo
       const descSanitizada = tarea.desc.replace(/'/g, "&#39;").replace(/"/g, "&quot;");
 
       tr.innerHTML = `
@@ -199,7 +271,6 @@
     });
   }
 
-  // FUNCIÓN REVOLUCIONARIA: Abre una ventana de impresión limpia con los códigos de barra formateados
   function imprimirEtiqueta(id, codigo, desc, cantidad) {
     const ventanaImpresion = window.open('', '_blank', 'width=600,height=600');
     
@@ -209,46 +280,14 @@
         <title>Imprimir Etiqueta - Tarea ${id}</title>
         <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
         <style>
-          body { 
-            font-family: Arial, sans-serif; 
-            margin: 0; 
-            padding: 15px; 
-            color: #000; 
-            text-align: center;
-          }
-          .etiqueta-box {
-            border: 2px dashed #000;
-            padding: 15px;
-            max-width: 400px;
-            margin: 0 auto;
-            border-radius: 5px;
-            box-sizing: border-box;
-          }
-          .header-info {
-            font-size: 14px;
-            margin-bottom: 12px;
-            text-align: left;
-            border-bottom: 1px solid #000;
-            padding-bottom: 6px;
-          }
+          body { font-family: Arial, sans-serif; margin: 0; padding: 15px; color: #000; text-align: center; }
+          .etiqueta-box { border: 2px dashed #000; padding: 15px; max-width: 400px; margin: 0 auto; border-radius: 5px; box-sizing: border-box; }
+          .header-info { font-size: 14px; margin-bottom: 12px; text-align: left; border-bottom: 1px solid #000; padding-bottom: 6px; }
           .header-info div { margin-bottom: 4px; }
-          .barcode-section {
-            margin: 15px 0;
-          }
-          .barcode-title {
-            font-size: 11px;
-            font-weight: bold;
-            text-transform: uppercase;
-            color: #444;
-            margin-bottom: 2px;
-          }
+          .barcode-section { margin: 15px 0; }
+          .barcode-title { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #444; margin-bottom: 2px; }
           svg { width: 100%; max-height: 75px; }
-          
-          /* Esconder cualquier elemento ajeno al imprimir */
-          @media print {
-            body { padding: 0; }
-            .etiqueta-box { border: none; }
-          }
+          @media print { body { padding: 0; } .etiqueta-box { border: none; } }
         </style>
       </head>
       <body>
@@ -257,43 +296,19 @@
             <div><strong>ID TAREA:</strong> ${id}</div>
             <div><strong>DESCRIPCIÓN:</strong> ${desc}</div>
           </div>
-          
           <div class="barcode-section">
             <div class="barcode-title">Código de Materia Prima</div>
             <svg id="barcodeCodigo"></svg>
           </div>
-          
           <div class="barcode-section">
             <div class="barcode-title">Cantidad a Ingresar</div>
             <svg id="barcodeCantidad"></svg>
           </div>
         </div>
-
         <script>
-          // Generación de los códigos de barra usando CODE128 estándar e industrial
-          JsBarcode("#barcodeCodigo", "${codigo}", {
-            format: "CODE128",
-            lineColor: "#000",
-            width: 2,
-            height: 50,
-            displayValue: true,
-            fontSize: 14
-          });
-
-          JsBarcode("#barcodeCantidad", "${cantidad}", {
-            format: "CODE128",
-            lineColor: "#000",
-            width: 2,
-            height: 50,
-            displayValue: true,
-            fontSize: 14
-          });
-
-          // Disparar ventana de impresión del sistema automáticamente y cerrar al terminar
-          window.onload = function() {
-            window.print();
-            setTimeout(function() { window.close(); }, 500);
-          }
+          JsBarcode("#barcodeCodigo", "${codigo}", { format: "CODE128", lineColor: "#000", width: 2, height: 50, displayValue: true, fontSize: 14 });
+          JsBarcode("#barcodeCantidad", "${cantidad}", { format: "CODE128", lineColor: "#000", width: 2, height: 50, displayValue: true, fontSize: 14 });
+          window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 500); }
         <\/script>
       </body>
       </html>
@@ -301,7 +316,7 @@
     ventanaImpresion.document.close();
   }
 
-  window.addEventListener('DOMContentLoaded', async () => {
+  async function cargarDatosGenerales() {
     try {
       const respuesta = await fetch(URL_API + "?cargarMaestros=true");
       const datos = await respuesta.json();
@@ -310,6 +325,7 @@
       LISTA_UBICACIONES = datos.ubicaciones || [];
       LISTA_TAREAS_ACTIVAS = datos.tareas || [];
 
+      // Renderizar listado de materiales
       selectMP.innerHTML = '<option value="">-- Elija un material --</option>';
       LISTA_MATERIALES.sort((a,b) => a.codigo.localeCompare(b.codigo)).forEach(m => {
         const opt = document.createElement('option');
@@ -318,6 +334,7 @@
         selectMP.appendChild(opt);
       });
 
+      // Renderizar Racks
       selectRack.innerHTML = '<option value="">-- Calle --</option>';
       const racksUnicos = [...new Set(LISTA_UBICACIONES.map(u => u.rack))].sort();
       racksUnicos.forEach(r => {
@@ -326,7 +343,16 @@
         selectRack.appendChild(opt);
       });
 
+      // Renderizar tabla principal
       renderizarTablaTareas();
+
+      // --- CÁLCULO DE MÉTRICAS PARA EL GRÁFICO (CON LOS NUEVOS CONTADORES RECTIFICADOS DEL SHEET) ---
+      const totalPendientes = LISTA_TAREAS_ACTIVAS.length;
+      const totalIngresados = datos.tareasCompletadasCount || 0; 
+      const totalEliminados = datos.tareasEliminadasCount || 0;
+
+      // Actualizar el gráfico dinámicamente
+      actualizarGrafico(totalPendientes, totalIngresados, totalEliminados);
 
       loadingBanner.style.display = 'none';
       document.querySelectorAll('#oficinaForm input, #oficinaForm select').forEach(el => el.disabled = false);
@@ -337,7 +363,9 @@
       loadingBanner.style.color = '#721c24';
       loadingBanner.textContent = '❌ Error de conexión con el Sheet.';
     }
-  });
+  }
+
+  window.addEventListener('DOMContentLoaded', cargarDatosGenerales);
 
   selectRack.addEventListener('change', () => {
     const rackSel = selectRack.value;
@@ -377,10 +405,7 @@
       document.getElementById('cantidad').value = "1";
       selectMP.value = ""; selectRack.value = ""; selectBox.innerHTML = '<option value="">-- Box --</option>';
       
-      const respuesta = await fetch(URL_API + "?cargarMaestros=true");
-      const datos = await respuesta.json();
-      LISTA_TAREAS_ACTIVAS = datos.tareas || [];
-      renderizarTablaTareas();
+      await cargarDatosGenerales();
     } catch (err) {
       statusBox.textContent = "❌ Error al guardar tarea.";
       statusBox.className = "status error";
@@ -403,9 +428,8 @@
         })
       });
 
-      LISTA_TAREAS_ACTIVAS = LISTA_TAREAS_ACTIVAS.filter(t => t.id !== idTarea);
-      renderizarTablaTareas();
-      alert(`✔ Tarea ${idTarea} removida de la vista.`);
+      await cargarDatosGenerales();
+      alert(`✔ Tarea ${idTarea} removida de la vista y gráfico actualizado.`);
     } catch (error) {
       alert("❌ Error de red al intentar eliminar la tarea.");
     }
