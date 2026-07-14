@@ -5,89 +5,161 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Oficina - Asignación de Ingresos</title>
   <style>
-    :root { --primary: #1d3557; --success: #2a9d8f; --error: #e63946; --bg: #f1faee; }
-    body { font-family: system-ui, sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
-    .card { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); box-sizing: border-box; }
-    .card-tabla { width: 100%; max-width: 850px; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); box-sizing: border-box; }
+    :root { 
+      --primary: #1d3557; 
+      --success: #2a9d8f; 
+      --error: #e63946; 
+      --bg: #f1faee; 
+    }
+    
+    body { 
+      font-family: system-ui, sans-serif; 
+      background: var(--bg); 
+      margin: 0; 
+      padding: 20px; 
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Contenedor principal para organizar las columnas */
+    .dashboard-container {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 25px;
+      width: 100%;
+      max-width: 1400px;
+      margin-top: 10px;
+    }
+
+    /* Columna Izquierda: Formulario */
+    .card { 
+      width: 100%; 
+      max-width: 450px; 
+      background: white; 
+      padding: 25px; 
+      border-radius: 8px; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+      box-sizing: border-box; 
+      flex-shrink: 0; /* Evita que el formulario se encoja */
+    }
+
+    /* Columna Derecha: Tabla */
+    .card-tabla { 
+      flex-grow: 1; /* Permite que la tabla ocupe el espacio disponible */
+      width: 100%; 
+      max-width: 900px; 
+      background: white; 
+      padding: 25px; 
+      border-radius: 8px; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+      box-sizing: border-box; 
+    }
+
     h2 { color: var(--primary); margin-top:0; text-align: center; border-bottom: 2px solid #e63946; padding-bottom: 10px;}
     .form-group { margin-bottom: 15px; }
     label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: var(--primary); }
     input, select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    
     button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
     button:hover { background: #457b9d; }
     button:disabled { background: #ccc; cursor: not-allowed; }
+    
     .status { text-align: center; padding: 10px; margin-top: 15px; border-radius: 4px; display: none; font-weight: bold; }
     .success { display: block; background: #e8f5e9; color: #2e7d32; }
     .error { display: block; background: #ffebee; color: #c62828; }
-    .loading-banner { background: #fff3cd; color: #856404; text-align: center; padding: 8px; border-radius: 4px; font-size: 13px; font-weight: bold; margin-bottom: 15px; }
+    .loading-banner { background: #fff3cd; color: #856404; text-align: center; padding: 12px; border-radius: 4px; font-size: 13px; font-weight: bold; width: 100%; max-width: 1360px; box-sizing: border-box; margin-bottom: 15px; }
     
     /* Estilos para el visor de la tabla */
     table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
-    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+    th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #ddd; }
     th { background-color: #f1f3f5; color: var(--primary); }
+    tr:hover { background-color: #f8f9fa; }
+    
     .btn-eliminar { background-color: var(--error); color: white; padding: 6px 10px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; margin-top: 0; width: auto; }
     .btn-eliminar:hover { background-color: #c62828; }
     .badge-pendiente { background: #fff3cd; color: #856404; padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+
+    /* Adaptación para pantallas de tablets o celulares */
+    @media (max-width: 1024px) {
+      .dashboard-container {
+        flex-direction: column;
+        align-items: center;
+      }
+      .card, .card-tabla {
+        max-width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
 
-<div class="card">
-  <h2>Control de Oficina: Crear Tarea</h2>
-  <div id="loadingBanner" class="loading-banner">🔄 Sincronizando catálogos de materiales y ubicaciones...</div>
+<!-- El banner de carga se queda arriba de todo ocupando el ancho del contenido -->
+<div id="loadingBanner" class="loading-banner">🔄 Sincronizando catálogos de materiales y ubicaciones...</div>
 
-  <form id="oficinaForm">
-    <div class="form-group">
-      <label for="materiaprima">Seleccionar Materia Prima</label>
-      <select id="materiaprima" required disabled>
-        <option value="">-- Elija un material --</option>
-      </select>
-    </div>
+<!-- Contenedor de distribución lado a lado -->
+<div class="dashboard-container">
 
-    <div class="form-group">
-      <label for="cantidad">Cantidad a Ingresar</label>
-      <input type="number" id="cantidad" min="1" value="1" required disabled>
-    </div>
-
-    <div class="grid-2">
+  <!-- Columna Izquierda: Formulario -->
+  <div class="card">
+    <h2>Control de Oficina: Crear Tarea</h2>
+    <form id="oficinaForm">
       <div class="form-group">
-        <label for="rack">Calle / Rack Destino</label>
-        <select id="rack" required disabled>
-          <option value="">-- Calle --</option>
+        <label for="materiaprima">Seleccionar Materia Prima</label>
+        <select id="materiaprima" required disabled>
+          <option value="">-- Elija un material --</option>
         </select>
       </div>
+
       <div class="form-group">
-        <label for="box">Posición / Box Destino</label>
-        <select id="box" required disabled>
-          <option value="">-- Box --</option>
-        </select>
+        <label for="cantidad">Cantidad a Ingresar</label>
+        <input type="number" id="cantidad" min="1" value="1" required disabled>
       </div>
-    </div>
 
-    <button type="submit" id="btnAsignar" disabled>ASIGNAR TAREA A HANDHELD</button>
-  </form>
-  <div id="statusBox" class="status"></div>
-</div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="rack">Calle / Rack Destino</label>
+          <select id="rack" required disabled>
+            <option value="">-- Calle --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="box">Posición / Box Destino</label>
+          <select id="box" required disabled>
+            <option value="">-- Box --</option>
+          </select>
+        </div>
+      </div>
 
-<div class="card-tabla">
-  <h2>Tareas Activas (Pendientes)</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>ID Tarea</th>
-        <th>Código MP</th>
-        <th>Descripción</th>
-        <th>Cantidad</th>
-        <th>Ubicación</th>
-        <th>Estado</th>
-        <th>Acción</th>
-      </tr>
-    </thead>
-    <tbody id="cuerpoTablaTareas">
-      <tr><td colspan="7" style="text-align: center; color: #666;">Cargando tareas activas...</td></tr>
-    </tbody>
-  </table>
+      <button type="submit" id="btnAsignar" disabled>ASIGNAR TAREA A HANDHELD</button>
+    </form>
+    <div id="statusBox" class="status"></div>
+  </div>
+
+  <!-- Columna Derecha: Tabla -->
+  <div class="card-tabla">
+    <h2>Tareas Activas (Pendientes)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID Tarea</th>
+          <th>Código MP</th>
+          <th>Descripción</th>
+          <th>Cantidad</th>
+          <th>Ubicación</th>
+          <th>Estado</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody id="cuerpoTablaTareas">
+        <tr><td colspan="7" style="text-align: center; color: #666;">Cargando tareas activas...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
 </div>
 
 <script>
@@ -105,7 +177,6 @@
   const btnAsignar = document.getElementById('btnAsignar');
   const cuerpoTablaTareas = document.getElementById('cuerpoTablaTareas');
 
-  // Dibuja las tareas vigentes descargadas del Sheet
   function renderizarTablaTareas() {
     if (LISTA_TAREAS_ACTIVAS.length === 0) {
       cuerpoTablaTareas.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #666;">No hay tareas pendientes en este momento.</td></tr>';
@@ -139,7 +210,6 @@
       LISTA_UBICACIONES = datos.ubicaciones || [];
       LISTA_TAREAS_ACTIVAS = datos.tareas || [];
 
-      // Llenar materiales ordenados
       selectMP.innerHTML = '<option value="">-- Elija un material --</option>';
       LISTA_MATERIALES.sort((a,b) => a.codigo.localeCompare(b.codigo)).forEach(m => {
         const opt = document.createElement('option');
@@ -148,7 +218,6 @@
         selectMP.appendChild(opt);
       });
 
-      // Llenar Racks únicos
       selectRack.innerHTML = '<option value="">-- Calle --</option>';
       const racksUnicos = [...new Set(LISTA_UBICACIONES.map(u => u.rack))].sort();
       racksUnicos.forEach(r => {
@@ -157,7 +226,6 @@
         selectRack.appendChild(opt);
       });
 
-      // Dibujar la tabla
       renderizarTablaTareas();
 
       loadingBanner.style.display = 'none';
@@ -209,7 +277,6 @@
       document.getElementById('cantidad').value = "1";
       selectMP.value = ""; selectRack.value = ""; selectBox.innerHTML = '<option value="">-- Box --</option>';
       
-      // Actualizar listado completo para ver el registro inmediato abajo
       const respuesta = await fetch(URL_API + "?cargarMaestros=true");
       const datos = await respuesta.json();
       LISTA_TAREAS_ACTIVAS = datos.tareas || [];
@@ -222,7 +289,6 @@
     }
   });
 
-  // FUNCIÓN PARA ELIMINAR SIN BORRAR LA FILA FÍSICAMENTE EN EL SHEET
   async function eliminarTarea(idTarea) {
     if (!confirm(`¿Está seguro de que desea eliminar la tarea ${idTarea}?`)) return;
 
@@ -237,7 +303,6 @@
         })
       });
 
-      // Eliminar del frontend inmediatamente para dar respuesta al usuario
       LISTA_TAREAS_ACTIVAS = LISTA_TAREAS_ACTIVAS.filter(t => t.id !== idTarea);
       renderizarTablaTareas();
       alert(`✔ Tarea ${idTarea} removida de la vista.`);
