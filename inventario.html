@@ -3,38 +3,120 @@
 <head>
   <meta charset="UTF-8">
   <title>Consolidador de Inventario en Tiempo Real</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  
   <style>
-    body { font-family: 'Segoe UI', sans-serif; margin: 20px; background: #f3f4f7; color: #333; }
-    .header { display: flex; justify-content: space-between; align-items: center; background: #04847c; color: white; padding: 15px 30px; border-radius: 6px; }
-    button { background: #023047; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
-    .card { background: white; padding: 20px; border-radius: 6px; margin-top: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    :root {
+      --primary: #1d3557;
+      --success: #2a9d8f;
+      --error: #e63946;
+      --print-btn: #457b9d;
+      --bg: #f1faee;
+    }
+    body { 
+      font-family: 'Segoe UI', sans-serif; 
+      margin: 20px; 
+      background: var(--bg); 
+      color: #333; 
+    }
+    .header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      background: var(--primary); 
+      color: white; 
+      padding: 15px 30px; 
+      border-radius: 8px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .acciones-btn { display: flex; gap: 10px; }
+    
+    button { 
+      background: var(--print-btn); 
+      color: white; 
+      border: none; 
+      padding: 10px 15px; 
+      border-radius: 4px; 
+      cursor: pointer; 
+      font-weight: bold;
+    }
+    button:hover { background: #1d3557; }
+    
+    button.btn-excel { background: var(--success); } /* Color verde característico de Excel unificado */
+    button.btn-excel:hover { opacity: 0.9; }
+    
+    .card { 
+      background: white; 
+      padding: 20px; 
+      border-radius: 8px; 
+      margin-top: 20px; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+    }
+    
+    /* Input de Filtro */
+    #filtro { 
+      width: 100%; 
+      padding: 10px; 
+      font-size: 14px; 
+      border: 1px solid #ccc; 
+      border-radius: 4px; 
+      box-sizing: border-box; 
+      margin-bottom: 15px; 
+    }
+    #filtro:focus {
+      border-color: var(--primary);
+      outline: none;
+    }
+
+    /* Estilos de Tabla */
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-    th { background-color: #f1f3f5; color: #023047; }
-    .alert { color: red; font-weight: bold; }
+    th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #f1f3f5; color: var(--primary); }
+    tr:hover { background-color: #f8f9fa; }
+    
+    .alert { color: var(--error); font-weight: bold; }
+
+    /* Botón para Imprimir Etiqueta */
+    .btn-etiqueta { 
+      background-color: var(--print-btn); 
+      color: white; 
+      padding: 6px 10px; 
+      font-size: 12px; 
+      border: none; 
+      border-radius: 4px; 
+      cursor: pointer; 
+      font-weight: bold; 
+    }
+    .btn-etiqueta:hover { background-color: var(--primary); }
   </style>
 </head>
 <body>
 
 <div class="header">
-  <h2>Control de Posiciones y Stock Consolidado</h2>
-  <button onclick="cargarInventario()">🔄 Actualizar Datos</button>
+  <h2 style="margin: 0;">Control de Posiciones y Stock Consolidado</h2>
+  <div class="acciones-btn">
+    <button onclick="cargarInventario()">Actualizar Datos</button>
+    <button class="btn-excel" onclick="exportarExcel()">Exportar Excel</button>
+  </div>
 </div>
 
 <div class="card">
-  <input type="text" id="filtro" placeholder="Buscar por código o ubicación..." onkeyup="filtrarTabla()" style="width: 100%; padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius:4px;">
+  <input type="text" id="filtro" placeholder="Buscar por código de material, descripción o ubicación..." onkeyup="filtrarTabla()">
   
   <table id="tablaInventario">
     <thead>
       <tr>
         <th>Código MP</th>
+        <th>Descripción Técnica</th>
         <th>Calle / Rack</th>
         <th>Box / Posición</th>
-        <th>Stock Total Real</th>
+        <th>Stock Consolidado</th>
+        <th>Acción</th> 
       </tr>
     </thead>
     <tbody id="cuerpoTabla">
-      <tr><td colspan="4" style="text-align:center;">Haga clic en 'Actualizar Datos' para sincronizar con la nube...</td></tr>
+      <tr><td colspan="6" style="text-align:center; color:#666;">Haga clic en 'Actualizar Datos' para iniciar la consulta.</td></tr>
     </tbody>
   </table>
 </div>
@@ -44,18 +126,18 @@
 
   async function cargarInventario() {
     const tbody = document.getElementById('cuerpoTabla');
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Procesando y agrupando posiciones desde el Sheet...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666;">Procesando y agrupando stock en tiempo real...</td></tr>';
     
     try {
       const response = await fetch(URL_API);
       const rows = await response.json();
       
-      // rows[0] son las cabeceras: [Usuario, Codigo, Descripción, Entrada, Salida, Rack, Box, Nombre, Fecha]
       const mapaInventario = {};
 
       for(let i = 1; i < rows.length; i++) {
         let fila = rows[i];
         let codigo = fila[1];
+        let descripcion = fila[2] || 'SIN DESCRIPCIÓN';
         let entrada = parseFloat(fila[3]) || 0;
         let salida = parseFloat(fila[4]) || 0;
         let rack = fila[5] || 'SIN RACK';
@@ -63,32 +145,135 @@
         
         if(!codigo) continue;
 
-        // Crear una clave única combinando posición y material
         let llave = `${codigo}|${rack}|${box}`;
 
         if(!mapaInventario[llave]) {
-          mapaInventario[llave] = { codigo, rack, box, stock: 0 };
+          mapaInventario[llave] = { codigo, descripcion, rack, box, stock: 0 };
         }
         mapaInventario[llave].stock += (entrada - salida);
       }
 
       tbody.innerHTML = "";
       Object.values(mapaInventario).forEach(item => {
-        if(item.stock === 0) return; // Opcional: no mostrar lo que está en 0
+        if(item.stock === 0) return; 
         
+        const descSanitizada = item.descripcion.replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+
         let tr = document.createElement('tr');
         tr.innerHTML = `
           <td><strong>${item.codigo}</strong></td>
+          <td>${item.descripcion}</td>
           <td>${item.rack}</td>
           <td>${item.box}</td>
           <td class="${item.stock < 0 ? 'alert' : ''}">${item.stock}</td>
+          <td>
+            <button class="btn-etiqueta" onclick="imprimirEtiqueta('${item.codigo}', '${descSanitizada}', '${item.stock}')">🖨️ Etiqueta</button>
+          </td>
         `;
         tbody.appendChild(tr);
       });
 
     } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">Error al obtener datos: ${err.message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">Error al obtener datos: ${err.message}</td></tr>`;
     }
+  }
+
+  function imprimirEtiqueta(codigo, desc, stock) {
+    const ventanaImpresion = window.open('', '_blank', 'width=600,height=600');
+    
+    ventanaImpresion.document.write(`
+      <html>
+      <head>
+        <title>Imprimir Etiqueta - ${codigo}</title>
+        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
+        <style>
+          body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 15px; 
+            color: #000; 
+            text-align: center;
+          }
+          .etiqueta-box {
+            border: 2px dashed #000;
+            padding: 15px;
+            max-width: 400px;
+            margin: 0 auto;
+            border-radius: 5px;
+            box-sizing: border-box;
+          }
+          .header-info {
+            font-size: 14px;
+            margin-bottom: 12px;
+            text-align: left;
+            border-bottom: 1px solid #000;
+            padding-bottom: 6px;
+          }
+          .header-info div { margin-bottom: 4px; }
+          .barcode-section {
+            margin: 15px 0;
+          }
+          .barcode-title {
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #444;
+            margin-bottom: 2px;
+          }
+          svg { width: 100%; max-height: 75px; }
+          
+          @media print {
+            body { padding: 0; }
+            .etiqueta-box { border: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="etiqueta-box">
+          <div class="header-info">
+            <div><strong>MATERIAL:</strong> ${codigo}</div>
+            <div><strong>DESCRIPCIÓN:</strong> ${desc}</div>
+          </div>
+          
+          <div class="barcode-section">
+            <div class="barcode-title">Código de Materia Prima</div>
+            <svg id="barcodeCodigo"></svg>
+          </div>
+          
+          <div class="barcode-section">
+            <div class="barcode-title">Cantidad / Stock Disponible</div>
+            <svg id="barcodeStock"></svg>
+          </div>
+        </div>
+
+        <script>
+          JsBarcode("#barcodeCodigo", "${codigo}", {
+            format: "CODE128",
+            lineColor: "#000",
+            width: 2,
+            height: 50,
+            displayValue: true,
+            fontSize: 14
+          });
+
+          JsBarcode("#barcodeStock", "${stock}", {
+            format: "CODE128",
+            lineColor: "#000",
+            width: 2,
+            height: 50,
+            displayValue: true,
+            fontSize: 14
+          });
+
+          window.onload = function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 500);
+          }
+        <\/script>
+      </body>
+      </html>
+    `);
+    ventanaImpresion.document.close();
   }
 
   function filtrarTabla() {
@@ -103,6 +288,25 @@
         filas[i].style.display = "none";
       }
     }
+  }
+
+  function exportarExcel() {
+    const tabla = document.getElementById("tablaInventario");
+    
+    const filas = document.getElementById('cuerpoTabla').getElementsByTagName('tr');
+    if (filas.length === 0 || filas[0].innerText.includes("Haga clic") || filas[0].innerText.includes("Procesando")) {
+      alert("Primero debe hacer clic en 'Actualizar Datos' para cargar información válida antes de exportar.");
+      return;
+    }
+
+    const hojaTrabajo = XLSX.utils.table_to_sheet(tabla);
+    const libroTrabajo = XLSX.utils.book_new();
+    
+    XLSX.utils.book_append_sheet(libroTrabajo, hojaTrabajo, "Inventario Consolidado");
+    
+    const fecha = new Date();
+    const txtFecha = `${fecha.getDate()}-${fecha.getMonth() + 1}-${fecha.getFullYear()}`;
+    XLSX.writeFile(libroTrabajo, `Reporte_Inventario_${txtFecha}.xlsx`);
   }
 </script>
 </body>
