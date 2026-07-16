@@ -25,6 +25,92 @@
       align-items: center;
     }
 
+    /* PANTALLA DE BLOQUEO / ACCESO POR TARJETA */
+    .login-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(29, 53, 87, 0.95);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .login-card {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .login-card h3 {
+      color: var(--primary);
+      margin-top: 0;
+      font-size: 20px;
+      border-bottom: 2px solid var(--error);
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+
+    .login-card input {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: 2px solid #ccc;
+      border-radius: 6px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    .login-card input:focus {
+      border-color: var(--primary);
+      outline: none;
+    }
+
+    /* BARRA DE SESIÓN ACTIVA */
+    .barra-sesion {
+      width: 100%;
+      max-width: 1360px;
+      background: var(--primary);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-sizing: border-box;
+      margin-bottom: 15px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+
+    .info-usuario {
+      font-weight: bold;
+      font-size: 15px;
+    }
+
+    .btn-salir-oficina {
+      background: var(--error);
+      color: white;
+      border: none;
+      padding: 6px 15px;
+      font-size: 12px;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
+      width: auto;
+      margin-top: 0;
+    }
+    .btn-salir-oficina:hover {
+      background-color: #c62828;
+    }
+
+    /* CONTENEDOR PRINCIPAL */
     .dashboard-container {
       display: flex;
       flex-direction: row;
@@ -108,9 +194,23 @@
 </head>
 <body>
 
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-card">
+    <h3>🔑 Acceso de Seguridad - Oficina</h3>
+    <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Por favor, escanee su tarjeta de legajo para habilitar el panel.</p>
+    <input type="password" id="tarjetaOficina" placeholder="Escanee la credencial..." autocomplete="off">
+    <div id="msgTarjetaError" class="status error" style="margin-top: 15px; display: none;">⚠ Tarjeta no autorizada o no registrada.</div>
+  </div>
+</div>
+
+<div id="barraSesion" class="barra-sesion" style="display: none;">
+  <div class="info-usuario">👤 Usuario Activo: <span id="nombreOficinista">---</span></div>
+  <button type="button" class="btn-salir-oficina" id="btnCerrarSesion">Cerrar Sesión / Bloquear</button>
+</div>
+
 <div id="loadingBanner" class="loading-banner">🔄 Sincronizando catálogos de materiales, ubicaciones y métricas...</div>
 
-<div class="dashboard-container">
+<div class="dashboard-container" id="panelTrabajo" style="display: none;">
 
   <div class="card-left">
     
@@ -191,11 +291,23 @@
 <script>
   const URL_API = "https://script.google.com/macros/s/AKfycbyZlEck5rqAxp1c_oYmB0hqzyeOP3ozWRkbn0-4Aa-mnFE8YAfqlm4JEYdaV7roNHAMXQ/exec";
 
+  let LISTA_OPERADORES = [];
   let LISTA_MATERIALES = [];
   let LISTA_UBICACIONES = [];
   let LISTA_TAREAS_ACTIVAS = [];
   let miGrafico = null; 
+  let oficinistaLogueado = null;
 
+  // Elementos de Acceso
+  const loginOverlay = document.getElementById('loginOverlay');
+  const inputTarjeta = document.getElementById('tarjetaOficina');
+  const msgTarjetaError = document.getElementById('msgTarjetaError');
+  const barraSesion = document.getElementById('barraSesion');
+  const nombreOficinista = document.getElementById('nombreOficinista');
+  const btnCerrarSesion = document.getElementById('btnCerrarSesion');
+  const panelTrabajo = document.getElementById('panelTrabajo');
+
+  // Elementos del Formulario
   const selectTipo = document.getElementById('tipoTarea');
   const selectMP = document.getElementById('materiaprima');
   const selectRack = document.getElementById('rack');
@@ -342,6 +454,7 @@
       const respuesta = await fetch(URL_API + "?cargarMaestros=true");
       const datos = await respuesta.json();
       
+      LISTA_OPERADORES = datos.usuarios || [];
       LISTA_MATERIALES = datos.materiales || [];
       LISTA_UBICACIONES = datos.ubicaciones || [];
       LISTA_TAREAS_ACTIVAS = datos.tareas || [];
@@ -377,6 +490,8 @@
       actualizarGrafico(totalPndEntrada, totalPndSalida, totalIngresados, totalEliminados);
 
       loadingBanner.style.display = 'none';
+      
+      // Habilitar inputs del formulario una vez cargados los datos
       document.querySelectorAll('#oficinaForm input, #oficinaForm select').forEach(el => el.disabled = false);
       btnAsignar.disabled = false;
 
@@ -387,7 +502,53 @@
     }
   }
 
-  window.addEventListener('DOMContentLoaded', cargarDatosGenerales);
+  window.addEventListener('DOMContentLoaded', () => {
+    cargarDatosGenerales();
+    inputTarjeta.focus(); // Foco automático para disparar con pistola láser
+  });
+
+  // ESCUCHAR ENTRADA DEL ESCÁNER DE TARJETAS (PRESIONAR ENTER AUTOMÁTICO)
+  inputTarjeta.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      procesarIngresoOficina();
+    }
+  });
+
+  function procesarIngresoOficina() {
+    const legajoEscaneado = inputTarjeta.value.trim();
+    if (!legajoEscaneado) return;
+
+    // Buscar si el legajo está registrado
+    const oficinistaEncontrado = LISTA_OPERADORES.find(op => op.legajo.toUpperCase() === legajoEscaneado.toUpperCase());
+
+    if (oficinistaEncontrado) {
+      oficinistaLogueado = oficinistaEncontrado.nombre;
+      nombreOficinista.textContent = oficinistaEncontrado.nombre;
+      
+      // Mostrar Panel de Trabajo y Barra de Sesión
+      loginOverlay.style.display = 'none';
+      barraSesion.style.display = 'flex';
+      panelTrabajo.style.display = 'flex';
+      
+      msgTarjetaError.style.display = 'none';
+      inputTarjeta.value = "";
+    } else {
+      msgTarjetaError.style.display = 'block';
+      inputTarjeta.value = "";
+      inputTarjeta.focus();
+    }
+  }
+
+  // Cerrar sesión y bloquear pantalla
+  btnCerrarSesion.addEventListener('click', () => {
+    oficinistaLogueado = null;
+    barraSesion.style.display = 'none';
+    panelTrabajo.style.display = 'none';
+    loginOverlay.style.display = 'flex';
+    
+    setTimeout(() => { inputTarjeta.focus(); }, 150);
+  });
 
   // Filtrar posiciones por Calle seleccionada
   selectRack.addEventListener('change', () => {
@@ -405,6 +566,11 @@
   // Enviar nueva tarea de oficina
   document.getElementById('oficinaForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!oficinistaLogueado) {
+      alert("Acceso denegado. Por favor, vuelva a escanear su credencial.");
+      return;
+    }
+
     btnAsignar.disabled = true;
     statusBox.style.display = 'none';
 
