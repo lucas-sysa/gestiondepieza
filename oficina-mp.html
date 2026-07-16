@@ -43,74 +43,56 @@
       background: white;
       padding: 40px;
       border-radius: 12px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-      width: 100%;
-      max-width: 400px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
       text-align: center;
+      max-width: 400px;
+      width: 90%;
     }
 
-    .login-card h3 {
-      color: var(--primary);
-      margin-top: 0;
-      font-size: 20px;
-      border-bottom: 2px solid var(--error);
-      padding-bottom: 15px;
-      margin-bottom: 20px;
+    .login-card h2 {
+      margin-bottom: 10px;
+      border: none;
+    }
+
+    .login-card p {
+      color: #555;
+      font-size: 14px;
+      margin-bottom: 25px;
     }
 
     .login-card input {
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      border: 2px solid #ccc;
-      border-radius: 6px;
+      font-size: 18px;
       text-align: center;
-      box-sizing: border-box;
-    }
-
-    .login-card input:focus {
-      border-color: var(--primary);
-      outline: none;
-    }
-
-    /* BARRA DE SESIÓN ACTIVA */
-    .barra-sesion {
-      width: 100%;
-      max-width: 1360px;
-      background: var(--primary);
-      color: white;
-      padding: 10px 20px;
-      border-radius: 6px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-sizing: border-box;
+      letter-spacing: 2px;
       margin-bottom: 15px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
 
-    .info-usuario {
+    .user-badge {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: white;
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-size: 13px;
       font-weight: bold;
-      font-size: 15px;
+      color: var(--primary);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    .btn-salir-oficina {
+    .btn-logout {
       background: var(--error);
       color: white;
       border: none;
-      padding: 6px 15px;
-      font-size: 12px;
-      font-weight: bold;
       border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 11px;
       cursor: pointer;
-      width: auto;
-      margin-top: 0;
-    }
-    .btn-salir-oficina:hover {
-      background-color: #c62828;
     }
 
-    /* CONTENEDOR PRINCIPAL */
     .dashboard-container {
       display: flex;
       flex-direction: row;
@@ -196,21 +178,21 @@
 
 <div id="loginOverlay" class="login-overlay">
   <div class="login-card">
-    <h3>🔑 Acceso de Seguridad - Oficina</h3>
-    <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Por favor, escanee su tarjeta de legajo para habilitar el panel.</p>
-    <input type="password" id="tarjetaOficina" placeholder="Escanee la credencial..." autocomplete="off">
-    <div id="msgTarjetaError" class="status error" style="margin-top: 15px; display: none;">⚠ Tarjeta no autorizada o no registrada.</div>
+    <h2>Acceso Autorizado</h2>
+    <p>Por favor, pase su tarjeta o ingrese su Legajo</p>
+    <input type="password" id="inputTarjeta" placeholder="••••••••" autofocus autocomplete="off">
+    <div id="loginStatus" style="color: var(--error); font-weight: bold; font-size: 14px; margin-top: 5px;"></div>
   </div>
 </div>
 
-<div id="barraSesion" class="barra-sesion" style="display: none;">
-  <div class="info-usuario">👤 Usuario Activo: <span id="nombreOficinista">---</span></div>
-  <button type="button" class="btn-salir-oficina" id="btnCerrarSesion">Cerrar Sesión / Bloquear</button>
+<div id="userBadge" class="user-badge" style="display: none;">
+  <span>👤 <span id="loggedUserName">Iniciando...</span></span>
+  <button class="btn-logout" onclick="logout()">Cerrar</button>
 </div>
 
 <div id="loadingBanner" class="loading-banner">🔄 Sincronizando catálogos de materiales, ubicaciones y métricas...</div>
 
-<div class="dashboard-container" id="panelTrabajo" style="display: none;">
+<div class="dashboard-container">
 
   <div class="card-left">
     
@@ -291,23 +273,18 @@
 <script>
   const URL_API = "https://script.google.com/macros/s/AKfycbyZlEck5rqAxp1c_oYmB0hqzyeOP3ozWRkbn0-4Aa-mnFE8YAfqlm4JEYdaV7roNHAMXQ/exec";
 
-  let LISTA_OPERADORES = [];
   let LISTA_MATERIALES = [];
   let LISTA_UBICACIONES = [];
   let LISTA_TAREAS_ACTIVAS = [];
+  let LISTA_USUARIOS = [];
   let miGrafico = null; 
-  let oficinistaLogueado = null;
 
-  // Elementos de Acceso
   const loginOverlay = document.getElementById('loginOverlay');
-  const inputTarjeta = document.getElementById('tarjetaOficina');
-  const msgTarjetaError = document.getElementById('msgTarjetaError');
-  const barraSesion = document.getElementById('barraSesion');
-  const nombreOficinista = document.getElementById('nombreOficinista');
-  const btnCerrarSesion = document.getElementById('btnCerrarSesion');
-  const panelTrabajo = document.getElementById('panelTrabajo');
+  const userBadge = document.getElementById('userBadge');
+  const loggedUserName = document.getElementById('loggedUserName');
+  const inputTarjeta = document.getElementById('inputTarjeta');
+  const loginStatus = document.getElementById('loginStatus');
 
-  // Elementos del Formulario
   const selectTipo = document.getElementById('tipoTarea');
   const selectMP = document.getElementById('materiaprima');
   const selectRack = document.getElementById('rack');
@@ -316,6 +293,46 @@
   const statusBox = document.getElementById('statusBox');
   const btnAsignar = document.getElementById('btnAsignar');
   const cuerpoTablaTareas = document.getElementById('cuerpoTablaTareas');
+
+  // CONTROL DE ACCESO
+  inputTarjeta.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      procesarLogin();
+    }
+  });
+
+  function procesarLogin() {
+    const rawLegajo = inputTarjeta.value.trim().split('.')[0];
+    if (!rawLegajo) return;
+
+    const usuarioEncontrado = LISTA_USUARIOS.find(u => u.legajo === rawLegajo);
+
+    if (usuarioEncontrado) {
+      sessionStorage.setItem('oficina_legajo', usuarioEncontrado.legajo);
+      sessionStorage.setItem('oficina_nombre', usuarioEncontrado.nombre);
+      mostrarInterfazLogueada(usuarioEncontrado.nombre);
+    } else {
+      loginStatus.textContent = "Acceso Denegado. Tarjeta o Legajo no registrado.";
+      inputTarjeta.value = "";
+      inputTarjeta.focus();
+    }
+  }
+
+  function mostrarInterfazLogueada(nombre) {
+    loginOverlay.style.display = 'none';
+    userBadge.style.display = 'flex';
+    loggedUserName.textContent = nombre;
+  }
+
+  function logout() {
+    sessionStorage.removeItem('oficina_legajo');
+    sessionStorage.removeItem('oficina_nombre');
+    userBadge.style.display = 'none';
+    loginOverlay.style.display = 'flex';
+    inputTarjeta.value = "";
+    loginStatus.textContent = "";
+    setTimeout(() => inputTarjeta.focus(), 200);
+  }
 
   // Actualiza o crea el gráfico de barras dinámico
   function actualizarGrafico(pendientesEntrada, pendientesSalida, ingresados, eliminados) {
@@ -454,10 +471,20 @@
       const respuesta = await fetch(URL_API + "?cargarMaestros=true");
       const datos = await respuesta.json();
       
-      LISTA_OPERADORES = datos.usuarios || [];
+      LISTA_USUARIOS = datos.usuarios || [];
       LISTA_MATERIALES = datos.materiales || [];
       LISTA_UBICACIONES = datos.ubicaciones || [];
       LISTA_TAREAS_ACTIVAS = datos.tareas || [];
+
+      // Validar si hay usuario guardado en sesión
+      const userCachedLegajo = sessionStorage.getItem('oficina_legajo');
+      const userCachedNombre = sessionStorage.getItem('oficina_nombre');
+      if (userCachedLegajo && userCachedNombre) {
+        mostrarInterfazLogueada(userCachedNombre);
+      } else {
+        loginOverlay.style.display = 'flex';
+        inputTarjeta.focus();
+      }
 
       // Cargar lista de Materiales
       selectMP.innerHTML = '<option value="">-- Elija un material --</option>';
@@ -490,8 +517,6 @@
       actualizarGrafico(totalPndEntrada, totalPndSalida, totalIngresados, totalEliminados);
 
       loadingBanner.style.display = 'none';
-      
-      // Habilitar inputs del formulario una vez cargados los datos
       document.querySelectorAll('#oficinaForm input, #oficinaForm select').forEach(el => el.disabled = false);
       btnAsignar.disabled = false;
 
@@ -502,53 +527,7 @@
     }
   }
 
-  window.addEventListener('DOMContentLoaded', () => {
-    cargarDatosGenerales();
-    inputTarjeta.focus(); // Foco automático para disparar con pistola láser
-  });
-
-  // ESCUCHAR ENTRADA DEL ESCÁNER DE TARJETAS (PRESIONAR ENTER AUTOMÁTICO)
-  inputTarjeta.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      procesarIngresoOficina();
-    }
-  });
-
-  function procesarIngresoOficina() {
-    const legajoEscaneado = inputTarjeta.value.trim();
-    if (!legajoEscaneado) return;
-
-    // Buscar si el legajo está registrado
-    const oficinistaEncontrado = LISTA_OPERADORES.find(op => op.legajo.toUpperCase() === legajoEscaneado.toUpperCase());
-
-    if (oficinistaEncontrado) {
-      oficinistaLogueado = oficinistaEncontrado.nombre;
-      nombreOficinista.textContent = oficinistaEncontrado.nombre;
-      
-      // Mostrar Panel de Trabajo y Barra de Sesión
-      loginOverlay.style.display = 'none';
-      barraSesion.style.display = 'flex';
-      panelTrabajo.style.display = 'flex';
-      
-      msgTarjetaError.style.display = 'none';
-      inputTarjeta.value = "";
-    } else {
-      msgTarjetaError.style.display = 'block';
-      inputTarjeta.value = "";
-      inputTarjeta.focus();
-    }
-  }
-
-  // Cerrar sesión y bloquear pantalla
-  btnCerrarSesion.addEventListener('click', () => {
-    oficinistaLogueado = null;
-    barraSesion.style.display = 'none';
-    panelTrabajo.style.display = 'none';
-    loginOverlay.style.display = 'flex';
-    
-    setTimeout(() => { inputTarjeta.focus(); }, 150);
-  });
+  window.addEventListener('DOMContentLoaded', cargarDatosGenerales);
 
   // Filtrar posiciones por Calle seleccionada
   selectRack.addEventListener('change', () => {
@@ -566,13 +545,11 @@
   // Enviar nueva tarea de oficina
   document.getElementById('oficinaForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!oficinistaLogueado) {
-      alert("Acceso denegado. Por favor, vuelva a escanear su credencial.");
-      return;
-    }
-
     btnAsignar.disabled = true;
     statusBox.style.display = 'none';
+
+    // Obtener legajo activo de la sesión de oficina
+    const legajoSesion = sessionStorage.getItem('oficina_legajo') || "";
 
     const payload = {
       accion: "crearTareaPendiente",
@@ -580,7 +557,8 @@
       materiaprima: selectMP.value,
       cantidad: document.getElementById('cantidad').value,
       rack: selectRack.value,
-      box: selectBox.value
+      box: selectBox.value,
+      usuarioOficina: legajoSesion // SE ENVÍA EL LEGAJO DE LA OFICINA
     };
 
     try {
