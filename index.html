@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Captura Materia Prima V2</title>
+  <title>Captura Materia Prima V2 - Handheld</title>
   <style>
     :root { 
       --primary: #1d3557; 
@@ -37,290 +37,390 @@
     }
     .form-group { margin-bottom: 12px; }
     label { display: block; font-size: 12px; font-weight: 600; color: var(--primary); margin-bottom: 4px; }
-    input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
-    input:focus, select:focus { border-color: var(--primary); outline: none; }
+    input, select { 
+      width: 100%; 
+      padding: 10px; 
+      box-sizing: border-box; 
+      border: 1px solid #ccc; 
+      border-radius: 4px; 
+      font-size: 14px; 
+    }
+    input:disabled, select:disabled {
+      background-color: #e9ecef;
+      color: #6c757d;
+      cursor: not-allowed;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     
-    .valido { border-color: var(--success) !important; background-color: #f4fbf7; }
-    .bloqueado { border-color: var(--error) !important; background-color: #fff5f5; animation: shake 0.2s 2; }
-    .mensaje-alerta { font-size: 11px; font-weight: bold; color: var(--error); margin-top: 3px; display: none; }
-    .mensaje-alerta.show { display: block; }
-    .mensaje-ok { font-size: 11px; font-weight: bold; color: var(--success); margin-top: 3px; display: none; }
-    .mensaje-ok.show { display: block; }
-
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-    button:hover { background: #457b9d; }
+    button { 
+      width: 100%; 
+      padding: 12px; 
+      background: var(--primary); 
+      color: white; 
+      border: none; 
+      border-radius: 4px; 
+      font-size: 15px; 
+      font-weight: bold; 
+      cursor: pointer; 
+      margin-top: 5px; 
+    }
+    button:hover { opacity: 0.9; }
     button:disabled { background: #ccc; cursor: not-allowed; }
     
-    .status { text-align: center; padding: 10px; margin-top: 10px; border-radius: 4px; display: none; font-weight: bold; }
-    .status.success { display: block; background: #e8f5e9; color: #2e7d32; }
-    .status.error { display: block; background: #ffebee; color: #c62828; }
-
-    .sync-banner { background: #fff3cd; color: #856404; text-align: center; padding: 6px; font-size: 11px; font-weight: bold; border-radius: 4px; margin-bottom: 10px; }
-    
-    /* SECCIÓN DE TAREAS PLANIFICADAS */
-    .tarea-box { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 10px; border-radius: 6px; margin-bottom: 12px; }
-    .tarea-box select { background: #ffffff; }
-    .info-tarea { font-size: 11px; color: #475569; margin-top: 5px; line-height: 1.4; display: none; }
-
-    @keyframes shake {
-      0% { transform: translateX(0); }
-      25% { transform: translateX(-4px); }
-      75% { transform: translateX(4px); }
-      100% { transform: translateX(0); }
+    .status { 
+      text-align: center; 
+      padding: 10px; 
+      margin-top: 10px; 
+      border-radius: 4px; 
+      display: none; 
+      font-weight: bold; 
+      font-size: 14px;
     }
+    .success { display: block; background: #e8f5e9; color: #2e7d32; }
+    .error { display: block; background: #ffebee; color: #c62828; }
+    
+    .warning-msg { 
+      color: var(--error); 
+      font-size: 11px; 
+      font-weight: bold; 
+      margin-top: 4px; 
+      display: none; 
+    }
+    .warning-msg.show { display: block; }
+    .input-error { border: 2px solid var(--error) !important; background-color: #ffebee; }
+    
+    /* Panel de operario identificado */
+    .operario-activo-box {
+      background-color: #e2f0fd;
+      border: 1px solid #b8daff;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-weight: bold;
+      color: #1d3557;
+      font-size: 13px;
+      margin-bottom: 12px;
+      display: none;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .btn-cerrar-sesion {
+      background: var(--error);
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 3px;
+      cursor: pointer;
+      width: auto;
+      margin-top: 0;
+    }
+
+    .tarea-banner {
+      background-color: #e2f0fd;
+      border: 1px solid #b8daff;
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      display: none;
+    }
+    .badge-tipo {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 5px;
+    }
+    .badge-entrada { background: var(--success); }
+    .badge-salida { background: var(--error); }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h2>Handheld MP - V2</h2>
-  
-  <div id="syncBanner" class="sync-banner">🔄 Sincronizando listas de materiales y usuarios del Sheet...</div>
+  <h2>Captura Materia Prima</h2>
 
-  <div class="tarea-box">
-    <label for="selectTarea">📋 Seleccionar Tarea Planificada:</label>
-    <select id="selectTarea" disabled>
-      <option value="">-- Cargar de forma Manual --</option>
-    </select>
-    <div id="infoTarea" class="info-tarea"></div>
+  <!-- 1. ESCANEO OBLIGATORIO DE TARJETA -->
+  <div class="form-group" id="seccionEscaneoTarjeta">
+    <label for="tarjetaOperador">🔑 Escanee Tarjeta de Operario (Legajo)</label>
+    <input type="password" id="tarjetaOperador" placeholder="Pase la tarjeta por el lector..." autofocus autocomplete="off">
+    <div id="msgTarjetaError" class="warning-msg">⚠ Tarjeta/Legajo no válido o no registrado en el sistema.</div>
   </div>
 
-  <form id="mpForm">
-    <div class="form-group">
-      <label for="operador">Legajo Operador</label>
-      <input type="number" id="operador" required autofocus autocomplete="off" disabled>
-      <div id="msgOperador" class="mensaje-ok"></div>
-    </div>
+  <!-- Banner de sesión de Operario -->
+  <div id="panelOperarioActivo" class="operario-activo-box">
+    <span>👤 Operador: <span id="nombreOperadorActivo">---</span></span>
+    <button type="button" class="btn-cerrar-sesion" id="btnCerrarSesion">Cambiar</button>
+  </div>
+  
+  <!-- Banner de información de Tarea Cargada -->
+  <div id="infoTarea" class="tarea-banner">
+    <div id="tareaTipoBadge" class="badge-tipo">ENTRADA</div>
+    <div><strong>Tarea asignada cargada:</strong></div>
+    <div id="tareaTexto"></div>
+  </div>
+
+  <!-- Formulario Principal (Bloqueado hasta pasar tarjeta) -->
+  <form id="handheldForm">
     
-    <div class="grid-2">
-      <div class="form-group">
-        <label for="materiaprima">Código MP (¡SÓLO ESCÁNER!)</label>
-        <input type="text" id="materiaprima" required autocomplete="off" style="text-transform:uppercase" placeholder="Gatille código" disabled>
-        <div id="alertaTeclado" class="mensaje-alerta">⚠️ Bloqueado: Use el lector de la handheld</div>
-        <div id="msgMP" class="mensaje-ok"></div>
-      </div>
-      <div class="form-group">
-        <label for="cantidad">Cantidad</label>
-        <input type="number" id="cantidad" required min="1" value="1" disabled>
-      </div>
+    <!-- Tareas pendientes disponibles -->
+    <div class="form-group">
+      <label for="selectTarea">Tarea Pendiente (Opcional)</label>
+      <select id="selectTarea" disabled>
+        <option value="">-- Operación Manual (Sin Tarea) --</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="materiaprima">Código Materia Prima</label>
+      <input type="text" id="materiaprima" placeholder="Escanear o ingresar MP" required disabled>
+      <div id="msgMP" class="warning-msg">⚠ Materia Prima no registrada en el catálogo.</div>
+    </div>
+
+    <div class="form-group">
+      <label for="cantidad">Cantidad</label>
+      <input type="number" id="cantidad" min="1" value="1" required disabled>
+    </div>
+
+    <div class="form-group">
+      <label for="movimiento">Tipo de Movimiento</label>
+      <select id="movimiento" required disabled>
+        <option value="ENTRADA">📥 ENTRADA (Suma Stock)</option>
+        <option value="SALIDA">📤 SALIDA (Resta Stock)</option>
+      </select>
     </div>
 
     <div class="grid-2">
       <div class="form-group">
         <label for="rack">Calle / Rack</label>
-        <input type="text" id="rack" placeholder="e.g. CALLE 01" required disabled maxlength="20">
+        <input type="text" id="rack" placeholder="Rack" required disabled>
       </div>
       <div class="form-group">
         <label for="box">Posición / Box</label>
-        <input type="text" id="box" placeholder="e.g. P 01" required disabled maxlength="20">
+        <input type="text" id="box" placeholder="Box" required disabled>
       </div>
     </div>
 
-    <div class="form-group">
-      <label for="tipo_movimiento">Movimiento</label>
-      <select id="tipo_movimiento" disabled>
-        <option value="ENTRADA">Entrada de Stock</option>
-        <option value="SALIDA">Salida de Stock</option>
-      </select>
-    </div>
-
-    <button type="submit" id="btnEnviar" disabled>REGISTRAR EN SHEET</button>
+    <button type="submit" id="btnRegistrar" disabled>REGISTRAR EN SHEET</button>
   </form>
+
   <div id="statusBox" class="status"></div>
 </div>
 
 <script>
   const URL_API = "https://script.google.com/macros/s/AKfycbyZlEck5rqAxp1c_oYmB0hqzyeOP3ozWRkbn0-4Aa-mnFE8YAfqlm4JEYdaV7roNHAMXQ/exec";
 
-  let LISTA_USUARIOS = [];
+  // Almacenes de memoria temporal
+  let LISTA_OPERADORES = [];
   let LISTA_MATERIALES = [];
   let LISTA_TAREAS = [];
   let idTareaSeleccionada = null;
+  let operadorLogueado = null; // Guardará el legajo.nombre del usuario activo
 
-  const inputOp = document.getElementById('operador');
-  const inputMP = document.getElementById('materiaprima');
-  const msgOp = document.getElementById('msgOperador');
-  const msgMP = document.getElementById('msgMP');
-  const alertaTeclado = document.getElementById('alertaTeclado');
-  const btnEnviar = document.getElementById('btnEnviar');
-  const syncBanner = document.getElementById('syncBanner');
+  // Elementos del DOM
+  const form = document.getElementById('handheldForm');
+  const inputTarjeta = document.getElementById('tarjetaOperador');
+  const seccionEscaneoTarjeta = document.getElementById('seccionEscaneoTarjeta');
+  const panelOperarioActivo = document.getElementById('panelOperarioActivo');
+  const nombreOperadorActivo = document.getElementById('nombreOperadorActivo');
+  const btnCerrarSesion = document.getElementById('btnCerrarSesion');
+  const msgTarjetaError = document.getElementById('msgTarjetaError');
+
   const selectTarea = document.getElementById('selectTarea');
-  const infoTarea = document.getElementById('infoTarea');
+  const inputMP = document.getElementById('materiaprima');
   const inputCantidad = document.getElementById('cantidad');
-  const selectMovimiento = document.getElementById('tipo_movimiento');
+  const selectMovimiento = document.getElementById('movimiento');
   const inputRack = document.getElementById('rack');
   const inputBox = document.getElementById('box');
+  const btnRegistrar = document.getElementById('btnRegistrar');
+  const statusBox = document.getElementById('statusBox');
+  
+  const msgMP = document.getElementById('msgMP');
+  const infoTarea = document.getElementById('infoTarea');
+  const tareaTexto = document.getElementById('tareaTexto');
+  const tareaTipoBadge = document.getElementById('tareaTipoBadge');
 
-  let ultimaTeclaTiempo = Date.now();
-
+  // Inicializar maestros desde Google Sheets
   async function inicializarMaestros() {
     try {
       const respuesta = await fetch(URL_API + "?cargarMaestros=true");
-      const datosMaestros = await respuesta.json();
-      
-      LISTA_USUARIOS = datosMaestros.usuarios || [];
-      LISTA_MATERIALES = datosMaestros.materiales || [];
-      LISTA_TAREAS = datosMaestros.tareas || [];
-      
-      selectTarea.innerHTML = '<option value="">-- Cargar de forma Manual --</option>';
+      const datos = await respuesta.json();
+
+      LISTA_OPERADORES = datos.usuarios || [];
+      LISTA_MATERIALES = datos.materiales || [];
+      LISTA_TAREAS = datos.tareas || [];
+
+      // Cargar Tareas en el selector
+      selectTarea.innerHTML = '<option value="">-- Operación Manual (Sin Tarea) --</option>';
       LISTA_TAREAS.forEach(t => {
         const opt = document.createElement('option');
         opt.value = t.id;
-        opt.textContent = `[${t.codigo}] Cant: ${t.cant} -> ${t.rack}-${t.box}`;
+        opt.textContent = `[${t.tipo}] ${t.id} - ${t.codigo} (${t.cant} pzs)`;
         selectTarea.appendChild(opt);
       });
 
-      syncBanner.style.display = 'none';
-      document.querySelectorAll('#mpForm input, #mpForm select, #selectTarea').forEach(el => el.disabled = false);
-      inputOp.focus();
+    } catch (e) {
+      console.error("Error al obtener maestros: ", e);
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    inicializarMaestros();
+    inputTarjeta.focus();
+  });
+
+  // Escuchar escaneo de tarjeta en el input (reacciona al "Enter" que envían los lectores de barra)
+  inputTarjeta.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      procesarTarjeta();
+    }
+  });
+
+  function procesarTarjeta() {
+    const legajoEscaneado = inputTarjeta.value.trim();
+    if (!legajoEscaneado) return;
+
+    // Buscar el legajo en el listado de operadores descargado
+    const operarioEncontrado = LISTA_OPERADORES.find(op => op.legajo.toUpperCase() === legajoEscaneado.toUpperCase());
+
+    if (operarioEncontrado) {
+      // Éxito: Loguear operario
+      operadorLogueado = `${operarioEncontrado.legajo}.${operarioEncontrado.nombre}`;
+      nombreOperadorActivo.textContent = operarioEncontrado.nombre;
       
-    } catch (err) {
-      syncBanner.style.backgroundColor = '#f8d7da';
-      syncBanner.style.color = '#721c24';
-      syncBanner.textContent = '❌ Error de red: No se pudo descargar el catálogo de materiales.';
-    }
-  }
-
-  window.addEventListener('DOMContentLoaded', inicializarMaestros);
-
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  function emitirBeep(esOk) {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    if(esOk) {
-      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-      osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+      // Ajustar interfaz
+      seccionEscaneoTarjeta.style.display = 'none';
+      panelOperarioActivo.style.display = 'flex';
+      msgTarjetaError.classList.remove('show');
+      inputTarjeta.value = "";
+      
+      // Habilitar formulario
+      alternarFormulario(true);
+      emitirBeep(true);
     } else {
-      osc.frequency.setValueAtTime(220, audioCtx.currentTime);
-      osc.start(); osc.stop(audioCtx.currentTime + 0.35);
+      // Error de tarjeta
+      msgTarjetaError.classList.add('show');
+      inputTarjeta.value = "";
+      inputTarjeta.focus();
+      emitirBeep(false);
     }
   }
 
-  function evaluarBoton() {
-    const opOk = inputOp.classList.contains('valido');
-    const mpOk = inputMP.classList.contains('valido');
-    const rackOk = inputRack.value.trim() !== "";
-    const boxOk = inputBox.value.trim() !== "";
-    btnEnviar.disabled = !(opOk && mpOk && rackOk && boxOk);
+  // Cerrar sesión / Cambiar de operario
+  btnCerrarSesion.addEventListener('click', () => {
+    operadorLogueado = null;
+    panelOperarioActivo.style.display = 'none';
+    seccionEscaneoTarjeta.style.display = 'block';
+    
+    alternarFormulario(false);
+    limpiarFormulario();
+    
+    setTimeout(() => { inputTarjeta.focus(); }, 150);
+  });
+
+  // Habilitar / Deshabilitar inputs de trabajo
+  function alternarFormulario(habilitar) {
+    const elementos = [selectTarea, inputMP, inputCantidad, selectMovimiento, inputRack, inputBox, btnRegistrar];
+    elementos.forEach(el => el.disabled = !habilitar);
   }
 
+  function limpiarFormulario() {
+    idTareaSeleccionada = null;
+    infoTarea.style.display = 'none';
+    inputMP.value = "";
+    inputMP.className = "";
+    msgMP.classList.remove('show');
+    inputCantidad.value = "1";
+    selectMovimiento.value = "ENTRADA";
+    inputRack.value = "";
+    inputBox.value = "";
+    selectTarea.value = "";
+  }
+
+  // Escuchar cambio en selección de tareas
   selectTarea.addEventListener('change', () => {
-    const idSel = selectTarea.value;
-    if (!idSel) {
-      idTareaSeleccionada = null;
-      infoTarea.style.display = 'none';
-      inputMP.value = "";
+    const tareaId = selectTarea.value;
+    if (!tareaId) {
+      limpiarFormulario();
+      // Asegurarnos que queden habilitados los inputs libres
       inputMP.disabled = false;
-      inputMP.className = "";
-      msgMP.classList.remove('show');
-      inputCantidad.value = "1";
       inputCantidad.disabled = false;
-      selectMovimiento.value = "ENTRADA";
       selectMovimiento.disabled = false;
-      inputRack.value = "";
-      inputBox.value = "";
-      evaluarBoton();
       return;
     }
 
-    const tarea = LISTA_TAREAS.find(t => t.id === idSel);
-    if (tarea) {
-      idTareaSeleccionada = tarea.id;
+    const t = LISTA_TAREAS.find(item => item.id === tareaId);
+    if (t) {
+      idTareaSeleccionada = t.id;
       
-      inputMP.value = tarea.codigo;
-      inputMP.disabled = true;
-      
-      inputCantidad.value = tarea.cant;
-      inputCantidad.disabled = true;
-      
-      selectMovimiento.value = "ENTRADA"; 
-      selectMovimiento.disabled = true;
-      
-      inputRack.value = tarea.rack;
-      inputBox.value = tarea.box;
-
-      infoTarea.innerHTML = `<strong>Descripción:</strong> ${tarea.desc}<br><strong>Cant. Planificada:</strong> ${tarea.cant}`;
+      // Mostrar Banner
       infoTarea.style.display = 'block';
-
-      const mat = LISTA_MATERIALES.find(m => m.codigo === tarea.codigo);
-      if (mat) {
-        inputMP.className = "valido";
-        msgMP.textContent = `✔ ${mat.desc}`;
-        msgMP.classList.add('show');
+      tareaTexto.innerHTML = `ID: <b>${t.id}</b><br>MP: ${t.codigo} - ${t.desc}<br>Cant: <b>${t.cant}</b><br>Ubicación destino: ${t.rack} - ${t.box}`;
+      
+      if (t.tipo === "SALIDA") {
+        tareaTipoBadge.textContent = "SALIDA";
+        tareaTipoBadge.className = "badge-tipo badge-salida";
+      } else {
+        tareaTipoBadge.textContent = "ENTRADA";
+        tareaTipoBadge.className = "badge-tipo badge-entrada";
       }
 
-      evaluarBoton();
-    }
-  });
-
-  inputOp.addEventListener('input', () => {
-    const val = inputOp.value.trim();
-    const buscado = LISTA_USUARIOS.find(u => u.legajo === val);
-    if (buscado) {
-      inputOp.className = "valido";
-      msgOp.textContent = `✔ Operario: ${buscado.nombre}`;
-      msgOp.classList.add('show');
-    } else {
-      inputOp.className = val ? "bloqueado" : "";
-      msgOp.classList.remove('show');
-    }
-    evaluarBoton();
-  });
-
-  inputRack.addEventListener('input', evaluarBoton);
-  inputBox.addEventListener('input', evaluarBoton);
-
-  inputMP.addEventListener('keydown', () => {
-    ultimaTeclaTiempo = Date.now();
-  });
-
-  inputMP.addEventListener('input', (e) => {
-    if (inputMP.disabled) return;
-
-    const tiempoDiferencia = Date.now() - ultimaTeclaTiempo;
-    const val = inputMP.value.toUpperCase().trim();
-    
-    if (tiempoDiferencia > 45 && e.inputType !== "insertFromPaste") {
-      inputMP.value = ""; 
-      inputMP.className = "bloqueado";
-      alertaTeclado.classList.add('show');
+      // Bloquear campos para evitar manipulación humana errónea
+      inputMP.value = t.codigo;
+      inputMP.disabled = true;
+      inputMP.className = "";
       msgMP.classList.remove('show');
-      evaluarBoton();
-      return; 
+
+      inputCantidad.value = t.cant;
+      inputCantidad.disabled = true;
+
+      selectMovimiento.value = t.tipo === "SALIDA" ? "SALIDA" : "ENTRADA";
+      selectMovimiento.disabled = true;
+
+      inputRack.value = t.rack;
+      inputBox.value = t.box;
+    }
+  });
+
+  // Validar Código de Material si se escribe de forma manual
+  inputMP.addEventListener('input', () => {
+    if (idTareaSeleccionada) return; 
+    const valor = inputMP.value.toUpperCase().trim();
+    if (valor === "") {
+      msgMP.classList.remove('show');
+      inputMP.className = "";
+      return;
     }
 
-    alertaTeclado.classList.remove('show');
-    const buscado = LISTA_MATERIALES.find(m => m.codigo === val);
-    
-    if (buscado) {
-      inputMP.className = "valido";
-      msgMP.textContent = `✔ ${buscado.desc}`;
+    const existe = LISTA_MATERIALES.some(m => m.codigo === valor);
+    if (existe) {
+      msgMP.classList.remove('show');
+      inputMP.className = "";
+    } else {
       msgMP.classList.add('show');
-      emitirBeep(true);
-    } else {
-      inputMP.className = val ? "bloqueado" : "";
-      msgMP.classList.remove('show');
-      if (val.length >= 4) emitirBeep(false);
+      inputMP.className = "input-error";
     }
-    evaluarBoton();
   });
 
-  document.getElementById('mpForm').addEventListener('submit', async (e) => {
+  // Envío del Formulario
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const statusBox = document.getElementById('statusBox');
-    
-    btnEnviar.disabled = true;
-    statusBox.className = "status";
+    if (!operadorLogueado) {
+      alert("Por favor, inicie sesión escaneando su credencial.");
+      return;
+    }
+
+    btnRegistrar.disabled = true;
     statusBox.style.display = "none";
 
     const payload = {
-      operador: inputOp.value,
+      operador: operadorLogueado,
       materiaprima: inputMP.value.toUpperCase().trim(),
       cantidad: parseInt(inputCantidad.value),
-      rack: inputRack.value.trim(),
-      box: inputBox.value.trim(),
+      rack: inputRack.value.trim().toUpperCase(),
+      box: inputBox.value.trim().toUpperCase(),
       movimiento: selectMovimiento.value,
       idTarea: idTareaSeleccionada
     };
@@ -333,39 +433,51 @@
         body: JSON.stringify(payload)
       });
 
-      statusBox.textContent = "✔ Registrado correctamente en Sheet";
+      statusBox.textContent = "✔ Registrado correctamente en el Sheet.";
       statusBox.className = "status success";
       emitirBeep(true);
       
-      idTareaSeleccionada = null;
-      infoTarea.style.display = 'none';
-      
-      inputMP.value = "";
+      // Auto-limpieza y actualización de maestros
+      limpiarFormulario();
       inputMP.disabled = false;
-      inputMP.className = "";
-      msgMP.classList.remove('show');
-      
-      inputCantidad.value = "1";
       inputCantidad.disabled = false;
-      
-      selectMovimiento.value = "ENTRADA";
       selectMovimiento.disabled = false;
       
-      inputRack.value = "";
-      inputBox.value = "";
-      selectTarea.value = "";
-      
-      inputMP.focus();
-      
-      inicializarMaestros();
+      await inicializarMaestros();
+
     } catch (err) {
-      statusBox.textContent = "❌ Error de conexión: " + err.message;
+      statusBox.textContent = "❌ Error de conexión al guardar.";
       statusBox.className = "status error";
       emitirBeep(false);
     } finally {
-      evaluarBoton();
+      btnRegistrar.disabled = false;
     }
   });
+
+  // Alertas sonoras
+  function emitirBeep(exito) {
+    try {
+      const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctxAudio.createOscillator();
+      const gain = ctxAudio.createGain();
+      osc.connect(gain);
+      gain.connect(ctxAudio.destination);
+
+      if (exito) {
+        osc.frequency.setValueAtTime(880, ctxAudio.currentTime);
+        gain.gain.setValueAtTime(0.1, ctxAudio.currentTime);
+        osc.start();
+        osc.stop(ctxAudio.currentTime + 0.15);
+      } else {
+        osc.frequency.setValueAtTime(220, ctxAudio.currentTime);
+        gain.gain.setValueAtTime(0.2, ctxAudio.currentTime);
+        osc.start();
+        osc.stop(ctxAudio.currentTime + 0.4);
+      }
+    } catch (e) {
+      console.warn("AudioContext bloqueado.");
+    }
+  }
 </script>
 </body>
 </html>
