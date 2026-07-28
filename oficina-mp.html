@@ -557,13 +557,33 @@
         inputTarjeta.focus();
       }
 
-      // Cargar lista de Materiales
+      // Cargar lista de Materiales agrupados por Sector y ordenados por Descripción
       selectMP.innerHTML = '<option value="">-- Elija un material --</option>';
-      LISTA_MATERIALES.sort((a,b) => a.codigo.localeCompare(b.codigo)).forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m.codigo;
-        opt.textContent = `${m.codigo} - ${m.desc}`;
-        selectMP.appendChild(opt);
+      
+      // Agrupar los materiales por sector
+      const materialesPorSector = LISTA_MATERIALES.reduce((acc, m) => {
+        const sec = (m.sector && m.sector.trim() !== "") ? m.sector.trim().toUpperCase() : "SIN SECTOR";
+        if (!acc[sec]) acc[sec] = [];
+        acc[sec].push(m);
+        return acc;
+      }, {});
+
+      // Ordenar sectores alfabéticamente
+      const sectoresOrdenados = Object.keys(materialesPorSector).sort((a, b) => a.localeCompare(b));
+
+      sectoresOrdenados.forEach(sec => {
+        const group = document.createElement('optgroup');
+        group.label = `--- SECTOR: ${sec} ---`;
+
+        // Ordenar alfabéticamente por Descripción dentro de cada sector
+        materialesPorSector[sec].sort((a, b) => a.desc.localeCompare(b.desc)).forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.codigo;
+          opt.textContent = `${m.desc} (${m.codigo})`;
+          group.appendChild(opt);
+        });
+
+        selectMP.appendChild(group);
       });
 
       // Cargar Racks y preseleccionar MUELLE
@@ -691,6 +711,9 @@
       alert("❌ Error de red al intentar eliminar la tarea.");
     }
   }
+</script>
+</body>
+</html>
 </script>
 </body>
 </html>
