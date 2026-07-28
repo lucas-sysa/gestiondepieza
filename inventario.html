@@ -28,7 +28,7 @@
       color: white; 
       padding: 15px 30px; 
       border-radius: 8px; 
-      box-shadow: 0 4px 12 rgba(0,0,0,0.1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     .acciones-btn { display: flex; gap: 10px; }
     button { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
@@ -66,7 +66,7 @@
   <div class="header">
     <h2>Consolidador de Inventario en Tiempo Real</h2>
     <div class="acciones-btn">
-      <input type="text" id="filtro" class="filtro-busqueda" placeholder="Buscar por MP o Ubicación..." onkeyup="filtrarTabla()">
+      <input type="text" id="filtro" class="filtro-busqueda" placeholder="Buscar por MP, Descripción o Ubicación..." onkeyup="filtrarTabla()">
       <button onclick="obtenerDatosGoogleSheets()">🔄 Actualizar Datos</button>
       <button class="btn-excel" onclick="exportarExcel()">📥 Guardar en Excel</button>
     </div>
@@ -77,6 +77,7 @@
       <thead>
         <tr>
           <th>Código Materia Prima</th>
+          <th>Descripción</th>
           <th>Rack</th>
           <th>Box</th>
           <th>Cantidad en Stock</th>
@@ -85,7 +86,7 @@
       </thead>
       <tbody id="cuerpoTabla">
         <tr>
-          <td colspan="5" style="text-align:center; color: #666;">Haga clic en 'Actualizar Datos' para sincronizar con la base central.</td>
+          <td colspan="6" style="text-align:center; color: #666;">Haga clic en 'Actualizar Datos' para sincronizar con la base central.</td>
         </tr>
       </tbody>
     </table>
@@ -96,14 +97,14 @@
 
   async function obtenerDatosGoogleSheets() {
     let tbody = document.getElementById('cuerpoTabla');
-    tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>Procesando y consolidando almacenes...</td></tr>";
+    tbody.innerHTML = "<tr><td colspan='6' style='text-align:center;'>Procesando y consolidando almacenes...</td></tr>";
 
     try {
       let respuesta = await fetch(URL_API);
       let datos = await respuesta.json();
 
       if(datos.length <= 1) {
-        tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>No se encontraron movimientos registrados en la Base de Datos.</td></tr>";
+        tbody.innerHTML = "<tr><td colspan='6' style='text-align:center;'>No se encontraron movimientos registrados en la Base de Datos.</td></tr>";
         return;
       }
 
@@ -112,6 +113,7 @@
       for (let i = 1; i < datos.length; i++) {
         let fila = datos[i];
         let codigo = fila[1]; 
+        let descripcion = fila[2] || "Sin descripción"; // Se obtiene la descripción
         let entrada = parseFloat(fila[3]) || 0;
         let salida = parseFloat(fila[4]) || 0;
         let rack = fila[5];
@@ -122,7 +124,7 @@
         let llave = `${codigo}|${rack}|${box}`;
 
         if(!mapaInventario[llave]) {
-          mapaInventario[llave] = { codigo, rack, box, stock: 0 };
+          mapaInventario[llave] = { codigo, descripcion, rack, box, stock: 0 };
         }
         mapaInventario[llave].stock += (entrada - salida);
       }
@@ -134,6 +136,7 @@
         let tr = document.createElement('tr');
         tr.innerHTML = `
           <td><strong>${item.codigo}</strong></td>
+          <td>${item.descripcion}</td>
           <td>${item.rack}</td>
           <td>${item.box}</td>
           <td class="${item.stock < 0 ? 'alert' : ''}">${item.stock}</td>
@@ -145,7 +148,7 @@
       });
 
     } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red;">Error al obtener datos: ${err.message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">Error al obtener datos: ${err.message}</td></tr>`;
     }
   }
 
