@@ -487,32 +487,8 @@
     });
   }
 
-  // Imprimir Etiqueta con Fecha, Turno y Canasto
+ // Imprimir Etiqueta con campos para completar a mano (Fecha, Turno, Canasto)
   function imprimirEtiqueta(id, codigo, desc, cantidad, tipo) {
-    // 1. Solicitar el número/código de Canasto al usuario
-    const canastoInput = prompt("Ingrese el identificador o número de Canasto (opcional):", "");
-    const canastoVal = (canastoInput && canastoInput.trim() !== "") ? canastoInput.trim().toUpperCase() : "N/A";
-
-    // 2. Obtener Fecha y Hora actual
-    const ahores = new Date();
-    const dia = String(ahores.getDate()).padStart(2, '0');
-    const mes = String(ahores.getMonth() + 1).padStart(2, '0');
-    const anio = ahores.getFullYear();
-    const horas = String(ahores.getHours()).padStart(2, '0');
-    const minutos = String(ahores.getMinutes()).padStart(2, '0');
-    const fechaTexto = `${dia}/${mes}/${anio} - ${horas}:${minutos}`;
-
-    // 3. Determinar el Turno de trabajo según la hora
-    const horaNum = ahores.getHours();
-    let turnoTexto = "Turno 1";
-    if (horaNum >= 6 && horaNum < 14) {
-      turnoTexto = "Turno 1 (06:00 - 14:00)";
-    } else if (horaNum >= 14 && horaNum < 22) {
-      turnoTexto = "Turno 2 (14:00 - 22:00)";
-    } else {
-      turnoTexto = "Turno 3 (22:00 - 06:00)";
-    }
-
     const ventanaImpresion = window.open('', '_blank', 'width=650,height=700');
     const tipoTitulo = tipo === "SALIDA" ? "PEDIDO DE SALIDA" : "PEDIDO DE ENTRADA";
     
@@ -527,10 +503,18 @@
           .tipo-operacion { font-size: 16px; font-weight: bold; background: #000; color: #fff; padding: 6px; text-align: center; margin-bottom: 10px; border-radius: 3px; }
           .header-info { font-size: 12px; margin-bottom: 10px; text-align: left; border-bottom: 1px solid #000; padding-bottom: 6px; }
           .header-info div { margin-bottom: 3px; }
-          .grid-info { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px; margin-bottom: 6px; background: #f8f9fa; padding: 6px; border-radius: 4px; border: 1px solid #ddd; }
+          
+          /* Sección de campos para completar a mano */
+          .manual-fields { display: flex; flex-direction: column; gap: 8px; font-size: 12px; font-weight: bold; margin-bottom: 12px; background: #fff; padding: 6px 0; }
+          .manual-row { display: flex; align-items: flex-end; width: 100%; }
+          .manual-label { white-space: nowrap; padding-right: 5px; }
+          .manual-line { flex: 1; border-bottom: 1px dashed #000; height: 14px; }
+          
+          .grid-manual { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+
           .barcode-section { margin: 10px 0; }
           .barcode-title { font-size: 10px; font-weight: bold; text-transform: uppercase; color: #444; margin-bottom: 2px; }
-          svg { width: 100%; max-height: 60px; }
+          svg { width: 100%; max-height: 55px; }
           @media print { body { padding: 0; } .etiqueta-box { border: none; } }
         </style>
       </head>
@@ -543,11 +527,22 @@
             <div><strong>DESCRIPCIÓN:</strong> ${desc}</div>
           </div>
 
-          <div class="grid-info">
-            <div><strong>FECHA:</strong> ${fechaTexto}</div>
-            <div><strong>TURNO:</strong> ${turnoTexto}</div>
-            <div><strong>CANASTO:</strong> ${canastoVal}</div>
-            <div><strong>CANTIDAD:</strong> ${cantidad}</div>
+          <!-- Campos con líneas punteadas para escribir a mano -->
+          <div class="manual-fields">
+            <div class="grid-manual">
+              <div class="manual-row">
+                <span class="manual-label">FECHA:</span>
+                <div class="manual-line"></div>
+              </div>
+              <div class="manual-row">
+                <span class="manual-label">TURNO:</span>
+                <div class="manual-line"></div>
+              </div>
+            </div>
+            <div class="manual-row" style="margin-top: 4px;">
+              <span class="manual-label">CANASTO / RACK:</span>
+              <div class="manual-line"></div>
+            </div>
           </div>
 
           <div class="barcode-section">
