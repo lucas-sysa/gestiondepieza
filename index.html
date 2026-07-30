@@ -339,7 +339,7 @@
     selectTarea.value = "";
   }
 
-  // Escuchar cambio en selección de tareas
+  // Escuchar cambio en selección de tareas (CON MEJORA DE CANTIDAD EDITABLE EN SALIDAS)
   selectTarea.addEventListener('change', () => {
     const tareaId = selectTarea.value;
     if (!tareaId) {
@@ -357,24 +357,30 @@
       
       // Mostrar Banner
       infoTarea.style.display = 'block';
-      tareaTexto.innerHTML = `ID: <b>${t.id}</b><br>MP: ${t.codigo} - ${t.desc}<br>Cant: <b>${t.cant}</b><br>Ubicación destino: ${t.rack} - ${t.box}`;
+      tareaTexto.innerHTML = `ID: <b>${t.id}</b><br>MP: ${t.codigo} - ${t.desc}<br>Cant Pedida: <b>${t.cant}</b><br>Ubicación destino: ${t.rack} - ${t.box}`;
       
       if (t.tipo === "SALIDA") {
         tareaTipoBadge.textContent = "SALIDA";
         tareaTipoBadge.className = "badge-tipo badge-salida";
+
+        // Permite modificar la cantidad para despachos/retiros
+        inputCantidad.value = t.cant;
+        inputCantidad.disabled = false;
+        inputCantidad.focus();
       } else {
         tareaTipoBadge.textContent = "ENTRADA";
         tareaTipoBadge.className = "badge-tipo badge-entrada";
+
+        // Mantiene bloqueada la cantidad para ingresos a stock
+        inputCantidad.value = t.cant;
+        inputCantidad.disabled = true;
       }
 
-      // Bloquear campos para evitar manipulación humana errónea
+      // El resto de campos permanecen protegidos para evitar errores de tipeo
       inputMP.value = t.codigo;
       inputMP.disabled = true;
       inputMP.className = "";
       msgMP.classList.remove('show');
-
-      inputCantidad.value = t.cant;
-      inputCantidad.disabled = true;
 
       selectMovimiento.value = t.tipo === "SALIDA" ? "SALIDA" : "ENTRADA";
       selectMovimiento.disabled = true;
