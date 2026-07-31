@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Oficina - Asignación de Ingresos/Egresos</title>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <!-- LIBRERÍA PARA GENERAR CÓDIGO QR -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root { 
@@ -70,7 +72,6 @@
       margin-bottom: 15px;
     }
 
-    /* TARJETA DE USUARIO CORREGIDA: SIN ESTIRAR Y CON EXCELENTE ESPACIADO */
     .user-badge {
       background: white;
       padding: 12px 20px;
@@ -87,21 +88,21 @@
     .user-badge-info {
       display: flex;
       align-items: center;
-      gap: 12px; /* Mayor separación entre el avatar y el texto */
+      gap: 12px; 
       font-size: 15px;
       color: #555;
       min-width: 0;
     }
 
     .user-badge-info span:first-child {
-      font-size: 18px; /* Avatar ligeramente más grande para acompañar */
+      font-size: 18px; 
     }
 
     #loggedUserName {
       font-size: 16px; 
       font-weight: 800; 
       color: var(--primary);
-      white-space: nowrap; /* Evita que el nombre se rompa en dos renglones amontonados */
+      white-space: nowrap; 
     }
 
     .btn-logout {
@@ -109,15 +110,15 @@
       color: #888;
       border: 1px solid #ddd;
       border-radius: 4px;
-      padding: 6px 12px; /* Proporciones normales de botón */
+      padding: 6px 12px; 
       font-size: 9px;   
       font-weight: bold;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       cursor: pointer;
       transition: all 0.2s ease;
-      width: auto !important; /* IMPORTANTE: Rompe el width: 100% de la regla general */
-      flex-shrink: 0;         /* Evita que se deforme si el contenedor se achica */
+      width: auto !important; 
+      flex-shrink: 0;         
       margin-top: 0 !important;
     }
     .btn-logout:hover {
@@ -139,7 +140,6 @@
       min-height: 0;
     }
 
-    /* COLUMNA IZQUIERDA COMPACTADA */
     .card-left {
       display: flex;
       flex-direction: column;
@@ -173,7 +173,6 @@
       min-height: 0;
     }
 
-    /* Contenedor con scroll interno para la tabla */
     .tabla-container {
       flex: 1;
       overflow-y: auto;
@@ -196,7 +195,6 @@
     .form-group { margin-bottom: 8px; } 
     label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: var(--primary); } 
     input, select { width: 100%; padding: 7px 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 12.5px; } 
-    /* Estilo visual para campos deshabilitados de forma permanente */
     select:disabled { background-color: #e9ecef; color: #495057; cursor: not-allowed; }
     
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -205,7 +203,6 @@
     button:hover { background: #457b9d; }
     button:disabled { background: #ccc; cursor: not-allowed; }
     
-    /* CUADRO DE ESTADO */
     .status { 
       text-align: center; 
       padding: 6px; 
@@ -235,7 +232,6 @@
     .badge-pendiente-entrada { background: #fff3cd; color: #856404; padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; border: 1px solid #ffeeba; }
     .badge-pendiente-salida { background: #e2f0fd; color: #185a9d; padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; border: 1px solid #b8daff; }
 
-    /* CONTENEDOR DE GRÁFICO */
     .chart-container {
       position: relative;
       width: 100%;
@@ -319,7 +315,6 @@
       </div>
     </div>
 
-    <!-- TARJETA INDEPENDIENTE DEL USUARIO LOGUEADO -->
     <div id="userBadge" class="user-badge" style="display: none;">
       <div class="user-badge-info">
         <span>👤</span>
@@ -378,7 +373,6 @@
   const btnAsignar = document.getElementById('btnAsignar');
   const cuerpoTablaTareas = document.getElementById('cuerpoTablaTareas');
 
-  // CONTROL DE ACCESO
   inputTarjeta.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       procesarLogin();
@@ -418,7 +412,6 @@
     setTimeout(() => inputTarjeta.focus(), 200);
   }
 
-  // Gráfico de barras dinámico
   function actualizarGrafico(pendientesEntrada, pendientesSalida, ingresados, eliminados) {
     const ctx = document.getElementById('graficoEstados').getContext('2d');
 
@@ -456,7 +449,6 @@
     }
   }
 
-  // Renderizar tabla de tareas activas
   function renderizarTablaTareas() {
     if (LISTA_TAREAS_ACTIVAS.length === 0) {
       cuerpoTablaTareas.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #666;">No hay tareas pendientes en este momento.</td></tr>';
@@ -487,49 +479,150 @@
     });
   }
 
- // Imprimir Etiqueta con campos para completar a mano (Fecha, Turno, Canasto)
+// IMPRESIÓN DE ETIQUETA (100mm x 100mm) - QR solo con ID + Información visual completa
   function imprimirEtiqueta(id, codigo, desc, cantidad, tipo) {
-    const ventanaImpresion = window.open('', '_blank', 'width=650,height=700');
+    const ventanaImpresion = window.open('', '_blank', 'width=450,height=450');
     const tipoTitulo = tipo === "SALIDA" ? "PEDIDO DE SALIDA" : "PEDIDO DE ENTRADA";
-    
+
     ventanaImpresion.document.write(`
       <html>
       <head>
-        <title>Imprimir Etiqueta - Tarea ${id}</title>
-        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
+        <title>Etiqueta ${id}</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
         <style>
-          body { font-family: Arial, sans-serif; margin: 0; padding: 10px; color: #000; text-align: center; }
-          .etiqueta-box { border: 2px dashed #000; padding: 12px; max-width: 420px; margin: 0 auto; border-radius: 5px; box-sizing: border-box; }
-          .tipo-operacion { font-size: 16px; font-weight: bold; background: #000; color: #fff; padding: 6px; text-align: center; margin-bottom: 10px; border-radius: 3px; }
-          .header-info { font-size: 12px; margin-bottom: 10px; text-align: left; border-bottom: 1px solid #000; padding-bottom: 6px; }
-          .header-info div { margin-bottom: 3px; }
-          
-          /* Sección de campos para completar a mano */
-          .manual-fields { display: flex; flex-direction: column; gap: 8px; font-size: 12px; font-weight: bold; margin-bottom: 12px; background: #fff; padding: 6px 0; }
-          .manual-row { display: flex; align-items: flex-end; width: 100%; }
-          .manual-label { white-space: nowrap; padding-right: 5px; }
-          .manual-line { flex: 1; border-bottom: 1px dashed #000; height: 14px; }
-          
-          .grid-manual { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+          @page {
+            size: 100mm 100mm;
+            margin: 0;
+          }
+          * { box-sizing: border-box; }
+          body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 3mm; 
+            width: 100mm; 
+            height: 100mm; 
+            color: #000; 
+            background: #fff;
+            overflow: hidden;
+          }
+          .etiqueta-container {
+            width: 94mm;
+            height: 94mm;
+            border: 2px solid #000;
+            padding: 3mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+          }
+          .header-tipo {
+            background: #000;
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            padding: 4px 0;
+            border-radius: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
 
-          .barcode-section { margin: 10px 0; }
-          .barcode-title { font-size: 10px; font-weight: bold; text-transform: uppercase; color: #444; margin-bottom: 2px; }
-          svg { width: 100%; max-height: 55px; }
-          @media print { body { padding: 0; } .etiqueta-box { border: none; } }
+          /* Sección Central: QR solo con ID Tarea */
+          .qr-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 2mm 0;
+            padding: 2mm;
+            border: 1px solid #000;
+            border-radius: 3px;
+            background: #fafafa;
+          }
+          .qr-title {
+            font-size: 8px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2mm;
+          }
+          #qrcode img {
+            width: 38mm !important;
+            height: 38mm !important;
+            display: block;
+            margin: 0 auto;
+          }
+
+          /* Datos visibles en texto plano */
+          .info-data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2mm;
+            font-size: 10px;
+            background: #f1f1f1;
+            padding: 2mm;
+            border-radius: 3px;
+            border: 1px solid #ddd;
+          }
+          .info-item strong { display: block; font-size: 8px; color: #555; text-transform: uppercase; }
+          .info-item span { font-size: 11px; font-weight: bold; }
+          .full-width { grid-column: span 2; }
+          .desc-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          /* Campos para completar a mano */
+          .manual-fields {
+            border-top: 1px dashed #000;
+            padding-top: 2mm;
+            display: flex;
+            flex-direction: column;
+            gap: 2mm;
+            font-size: 9px;
+            font-weight: bold;
+          }
+          .manual-row { display: flex; align-items: flex-end; width: 100%; }
+          .manual-label { white-space: nowrap; padding-right: 3px; }
+          .manual-line { flex: 1; border-bottom: 1px dashed #000; height: 10px; }
+          .grid-2-manual { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+
+          @media print { 
+            body { padding: 0; } 
+            .etiqueta-container { border: none; width: 100mm; height: 100mm; padding: 3mm; } 
+          }
         </style>
       </head>
       <body>
-        <div class="etiqueta-box">
-          <div class="tipo-operacion">${tipoTitulo}</div>
+        <div class="etiqueta-container">
           
-          <div class="header-info">
-            <div><strong>ID TAREA:</strong> ${id}</div>
-            <div><strong>DESCRIPCIÓN:</strong> ${desc}</div>
+          <div class="header-tipo">${tipoTitulo}</div>
+
+          <!-- DATOS VISIBLES PARA EL OPERARIO -->
+          <div class="info-data-grid">
+            <div class="info-item">
+              <strong>ID Tarea</strong>
+              <span>${id}</span>
+            </div>
+            <div class="info-item">
+              <strong>Cód. MP / Cantidad</strong>
+              <span>${codigo} (${cantidad} u.)</span>
+            </div>
+            <div class="info-item full-width desc-text">
+              <strong>Descripción Material</strong>
+              <span>${desc}</span>
+            </div>
           </div>
 
-          <!-- Campos con líneas punteadas para escribir a mano -->
+          <!-- CÓDIGO QR SOLO CON EL ID DE TAREA -->
+          <div class="qr-section">
+            <div class="qr-title">ESCANEAR TAREA CON HANDHELD</div>
+            <div id="qrcode"></div>
+          </div>
+
+          <!-- CAMPOS MANUALES -->
           <div class="manual-fields">
-            <div class="grid-manual">
+            <div class="grid-2-manual">
               <div class="manual-row">
                 <span class="manual-label">FECHA:</span>
                 <div class="manual-line"></div>
@@ -539,26 +632,31 @@
                 <div class="manual-line"></div>
               </div>
             </div>
-            <div class="manual-row" style="margin-top: 4px;">
+            <div class="manual-row">
               <span class="manual-label">CANASTO / RACK:</span>
               <div class="manual-line"></div>
             </div>
           </div>
 
-          <div class="barcode-section">
-            <div class="barcode-title">Código de Materia Prima</div>
-            <svg id="barcodeCodigo"></svg>
-          </div>
-          
-          <div class="barcode-section">
-            <div class="barcode-title">Cantidad de la Operación</div>
-            <svg id="barcodeCantidad"></svg>
-          </div>
         </div>
+
         <script>
-          JsBarcode("#barcodeCodigo", "${codigo}", { format: "CODE128", lineColor: "#000", width: 2, height: 45, displayValue: true, fontSize: 13 });
-          JsBarcode("#barcodeCantidad", "${cantidad}", { format: "CODE128", lineColor: "#000", width: 2, height: 45, displayValue: true, fontSize: 13 });
-          window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 500); }
+          // QR generado EXCLUSIVAMENTE con el ID de la tarea
+          new QRCode(document.getElementById("qrcode"), {
+            text: "${id}",
+            width: 140,
+            height: 140,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.M
+          });
+
+          window.onload = function() { 
+            setTimeout(function() { 
+              window.print(); 
+              window.close(); 
+            }, 300); 
+          }
         <\/script>
       </body>
       </html>
@@ -566,7 +664,7 @@
     ventanaImpresion.document.close();
   }
 
-  // Cargar datos principales de Google Sheets
+
   async function cargarDatosGenerales() {
     try {
       const respuesta = await fetch(URL_API + "?cargarMaestros=true");
@@ -577,7 +675,6 @@
       LISTA_UBICACIONES = datos.ubicaciones || [];
       LISTA_TAREAS_ACTIVAS = datos.tareas || [];
 
-      // Validar si hay usuario guardado en sesión
       const userCachedLegajo = sessionStorage.getItem('oficina_legajo');
       const userCachedNombre = sessionStorage.getItem('oficina_nombre');
       if (userCachedLegajo && userCachedNombre) {
@@ -587,10 +684,8 @@
         inputTarjeta.focus();
       }
 
-      // Cargar lista de Materiales agrupados por Sector y ordenados por Descripción
       selectMP.innerHTML = '<option value="">-- Elija un material --</option>';
       
-      // Agrupar los materiales por sector
       const materialesPorSector = LISTA_MATERIALES.reduce((acc, m) => {
         const sec = (m.sector && m.sector.trim() !== "") ? m.sector.trim().toUpperCase() : "SIN SECTOR";
         if (!acc[sec]) acc[sec] = [];
@@ -598,14 +693,12 @@
         return acc;
       }, {});
 
-      // Ordenar sectores alfabéticamente
       const sectoresOrdenados = Object.keys(materialesPorSector).sort((a, b) => a.localeCompare(b));
 
       sectoresOrdenados.forEach(sec => {
         const group = document.createElement('optgroup');
         group.label = `--- SECTOR: ${sec} ---`;
 
-        // Ordenar alfabéticamente por Descripción dentro de cada sector
         materialesPorSector[sec].sort((a, b) => a.desc.localeCompare(b.desc)).forEach(m => {
           const opt = document.createElement('option');
           opt.value = m.codigo;
@@ -616,7 +709,6 @@
         selectMP.appendChild(group);
       });
 
-      // Cargar Racks y preseleccionar MUELLE
       selectRack.innerHTML = '<option value="">-- Calle --</option>';
       const racksUnicos = [...new Set(LISTA_UBICACIONES.map(u => u.rack))].sort();
       racksUnicos.forEach(r => {
@@ -624,26 +716,22 @@
         opt.value = r; 
         opt.textContent = r;
         if (r === "MUELLE") {
-          opt.selected = true; // Marca MUELLE como predeterminado
+          opt.selected = true; 
         }
         selectRack.appendChild(opt);
       });
 
-      // Renderizar tabla principal
       renderizarTablaTareas();
 
-      // Cálculo de métricas
       const totalPndEntrada = datos.tareasPendientesEntradaCount || 0;
       const totalPndSalida = datos.tareasPendientesSalidaCount || 0;
       const totalIngresados = datos.tareasCompletadasCount || 0; 
       const totalEliminados = datos.tareasEliminadasCount || 0;
 
-      // Dibujar gráfico
       actualizarGrafico(totalPndEntrada, totalPndSalida, totalIngresados, totalEliminados);
 
       loadingBanner.style.display = 'none';
       
-      // Habilitar todos los campos del formulario EXCEPTO Calle / Rack ('rack')
       document.querySelectorAll('#oficinaForm input, #oficinaForm select').forEach(el => {
         if (el.id !== 'rack') {
           el.disabled = false;
@@ -651,7 +739,6 @@
       });
       btnAsignar.disabled = false;
 
-      // Dispara el evento change manualmente para cargar las opciones de box de MUELLE inmediatamente
       selectRack.dispatchEvent(new Event('change'));
 
     } catch (err) {
@@ -663,7 +750,6 @@
 
   window.addEventListener('DOMContentLoaded', cargarDatosGenerales);
 
-  // Filtrar posiciones por Calle seleccionada
   selectRack.addEventListener('change', () => {
     const rackSel = selectRack.value;
     selectBox.innerHTML = '<option value="">-- Box --</option>';
@@ -676,7 +762,6 @@
     }
   });
 
-  // Enviar nueva tarea de oficina
   document.getElementById('oficinaForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     btnAsignar.disabled = true;
@@ -689,7 +774,7 @@
       tipo: selectTipo.value,
       materiaprima: selectMP.value,
       cantidad: document.getElementById('cantidad').value,
-      rack: selectRack.value, // Envía "MUELLE" correctamente
+      rack: selectRack.value, 
       box: selectBox.value,
       usuarioOficina: legajoSesion 
     };
@@ -707,7 +792,6 @@
       document.getElementById('cantidad').value = "1";
       selectMP.value = ""; 
       
-      // Asegurar que siga en MUELLE tras limpiar el formulario
       selectRack.value = "MUELLE"; 
       selectRack.dispatchEvent(new Event('change'));
       
@@ -720,7 +804,6 @@
     }
   });
 
-  // Eliminar Tarea
   async function eliminarTarea(idTarea) {
     if (!confirm(`¿Está seguro de que desea eliminar la tarea ${idTarea}?`)) return;
 
@@ -741,9 +824,6 @@
       alert("❌ Error de red al intentar eliminar la tarea.");
     }
   }
-</script>
-</body>
-</html>
 </script>
 </body>
 </html>
