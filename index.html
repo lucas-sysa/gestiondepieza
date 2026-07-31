@@ -194,11 +194,11 @@
     <div class="grid-2">
       <div class="form-group">
         <label for="rack">Calle / Rack</label>
-        <input type="text" id="rack" placeholder="Rack" required disabled>
+        <input type="text" id="rack" placeholder="Ingresar Rack real" required disabled>
       </div>
       <div class="form-group">
         <label for="box">Posición / Box</label>
-        <input type="text" id="box" placeholder="Box" required disabled>
+        <input type="text" id="box" placeholder="Ingresar Box real" required disabled>
       </div>
     </div>
 
@@ -216,7 +216,7 @@
   let LISTA_MATERIALES = [];
   let LISTA_TAREAS = [];
   let idTareaSeleccionada = null;
-  let operadorLogueado = null; // Guardará el legajo.nombre del usuario activo
+  let operadorLogueado = null; 
 
   // Elementos del DOM
   const form = document.getElementById('handheldForm');
@@ -270,7 +270,7 @@
     inputTarjeta.focus();
   });
 
-  // Escuchar escaneo de tarjeta en el input (reacciona al "Enter" que envían los lectores de barra)
+  // Escuchar escaneo de tarjeta
   inputTarjeta.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -282,25 +282,20 @@
     const legajoEscaneado = inputTarjeta.value.trim();
     if (!legajoEscaneado) return;
 
-    // Buscar el legajo en el listado de operadores descargado
     const operarioEncontrado = LISTA_OPERADORES.find(op => op.legajo.toUpperCase() === legajoEscaneado.toUpperCase());
 
     if (operarioEncontrado) {
-      // Éxito: Loguear operario
       operadorLogueado = `${operarioEncontrado.legajo}.${operarioEncontrado.nombre}`;
       nombreOperadorActivo.textContent = operarioEncontrado.nombre;
       
-      // Ajustar interfaz
       seccionEscaneoTarjeta.style.display = 'none';
       panelOperarioActivo.style.display = 'flex';
       msgTarjetaError.classList.remove('show');
       inputTarjeta.value = "";
       
-      // Habilitar formulario
       alternarFormulario(true);
       emitirBeep(true);
     } else {
-      // Error de tarjeta
       msgTarjetaError.classList.add('show');
       inputTarjeta.value = "";
       inputTarjeta.focus();
@@ -308,7 +303,7 @@
     }
   }
 
-  // Cerrar sesión / Cambiar de operario
+  // Cerrar sesión
   btnCerrarSesion.addEventListener('click', () => {
     operadorLogueado = null;
     panelOperarioActivo.style.display = 'none';
@@ -320,7 +315,7 @@
     setTimeout(() => { inputTarjeta.focus(); }, 150);
   });
 
-  // Habilitar / Deshabilitar inputs de trabajo
+  // Habilitar / Deshabilitar inputs
   function alternarFormulario(habilitar) {
     const elementos = [selectTarea, inputMP, inputCantidad, selectMovimiento, inputRack, inputBox, btnRegistrar];
     elementos.forEach(el => el.disabled = !habilitar);
@@ -335,48 +330,59 @@
     inputCantidad.value = "1";
     selectMovimiento.value = "ENTRADA";
     inputRack.value = "";
+    inputRack.disabled = false;
     inputBox.value = "";
+    inputBox.disabled = false;
     selectTarea.value = "";
   }
 
-  // Escuchar cambio en selección de tareas (CON MEJORA DE CANTIDAD EDITABLE EN SALIDAS)
+  // Escuchar cambio en selección de tareas
   selectTarea.addEventListener('change', () => {
     const tareaId = selectTarea.value;
     if (!tareaId) {
       limpiarFormulario();
-      // Asegurarnos que queden habilitados los inputs libres
       inputMP.disabled = false;
       inputCantidad.disabled = false;
       selectMovimiento.disabled = false;
+      inputRack.disabled = false;
+      inputBox.disabled = false;
       return;
     }
 
     const t = LISTA_TAREAS.find(item => item.id === tareaId);
     if (t) {
       idTareaSeleccionada = t.id;
-      
-      // Mostrar Banner
       infoTarea.style.display = 'block';
-      tareaTexto.innerHTML = `ID: <b>${t.id}</b><br>MP: ${t.codigo} - ${t.desc}<br>Cant Pedida: <b>${t.cant}</b><br>Ubicación destino: ${t.rack} - ${t.box}`;
       
       if (t.tipo === "SALIDA") {
         tareaTipoBadge.textContent = "SALIDA";
         tareaTipoBadge.className = "badge-tipo badge-salida";
+        
+        // Banner informativo con el muelle de destino a entregar enviado por Oficina
+        tareaTexto.innerHTML = `ID: <b>${t.id}</b><br>MP: ${t.codigo} - ${t.desc}<br>Cant Pedida: <b>${t.cant}</b><br>🚚 <b>Muelle/Lugar de Entrega:</b> ${t.rack} - ${t.box}`;
 
-        // Permite modificar la cantidad para despachos/retiros
+        // Habilita edición de cantidad
         inputCantidad.value = t.cant;
         inputCantidad.disabled = false;
-        inputCantidad.focus();
       } else {
         tareaTipoBadge.textContent = "ENTRADA";
         tareaTipoBadge.className = "badge-tipo badge-entrada";
+        
+        // Banner informativo con el Muelle de retiro asignado por Oficina
+        tareaTexto.innerHTML = `ID: <b>${t.id}</b><br>MP: ${t.codigo} - ${t.desc}<br>Cant: <b>${t.cant}</b><br>📦 <b>Muelle/Lugar de Retiro:</b> ${t.rack} - ${t.box}`;
 
-        // Mantiene bloqueada la cantidad para ingresos a stock
+        // Mantiene cantidad fija para ingresos
         inputCantidad.value = t.cant;
         inputCantidad.disabled = true;
       }
 
-      // El resto de campos permanecen protegidos para evitar errores de tipeo
+      // AMBOS CASOS (ENTRADA Y SALIDA): Los campos de ubicación se dejan VACÍOS y HABILITADOS
+      inputRack.value = "";
+      inputRack.disabled = false;
+      inputBox.value = "";
+      inputBox.disabled = false;
+
+      // Código de MP y Tipo de Movimiento protegidos
       inputMP.value = t.codigo;
       inputMP.disabled = true;
       inputMP.className = "";
@@ -385,12 +391,12 @@
       selectMovimiento.value = t.tipo === "SALIDA" ? "SALIDA" : "ENTRADA";
       selectMovimiento.disabled = true;
 
-      inputRack.value = t.rack;
-      inputBox.value = t.box;
+      // El cursor va directamente a Calle/Rack para escanear/ingresar la ubicación real
+      inputRack.focus();
     }
   });
 
-  // Validar Código de Material si se escribe de forma manual
+  // Validar Código de Material si es manual
   inputMP.addEventListener('input', () => {
     if (idTareaSeleccionada) return; 
     const valor = inputMP.value.toUpperCase().trim();
@@ -443,11 +449,12 @@
       statusBox.className = "status success";
       emitirBeep(true);
       
-      // Auto-limpieza y actualización de maestros
       limpiarFormulario();
       inputMP.disabled = false;
       inputCantidad.disabled = false;
       selectMovimiento.disabled = false;
+      inputRack.disabled = false;
+      inputBox.disabled = false;
       
       await inicializarMaestros();
 
