@@ -89,7 +89,6 @@
     .warning-msg.show { display: block; }
     .input-error { border: 2px solid var(--error) !important; background-color: #ffebee; }
     
-    /* Panel de operario identificado */
     .operario-activo-box {
       background-color: #e2f0fd;
       border: 1px solid #b8daff;
@@ -134,6 +133,15 @@
     }
     .badge-entrada { background: var(--success); }
     .badge-salida { background: var(--error); }
+    
+    /* Estilo resaltado para el escáner de QR */
+    .qr-input-box {
+      background-color: #fff8e1;
+      border: 2px dashed #ffa000;
+      padding: 8px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
   </style>
 </head>
 <body>
@@ -141,11 +149,11 @@
 <div class="container">
   <h2>Captura Materia Prima</h2>
 
-  <!-- 1. ESCANEO OBLIGATORIO DE TARJETA -->
+  <!-- 1. ESCANEO OBLIGATORIO DE TARJETA OPERARIO -->
   <div class="form-group" id="seccionEscaneoTarjeta">
     <label for="tarjetaOperador">🔑 Escanee Tarjeta de Operario (Legajo)</label>
-    <input type="password" id="tarjetaOperador" placeholder="Pase la tarjeta por el lector..." autofocus autocomplete="off">
-    <div id="msgTarjetaError" class="warning-msg">⚠ Tarjeta/Legajo no válido o no registrado en el sistema.</div>
+    <input type="password" id="tarjetaOperador" placeholder="Pase la tarjeta..." autofocus autocomplete="off">
+    <div id="msgTarjetaError" class="warning-msg">⚠ Tarjeta/Legajo no válido.</div>
   </div>
 
   <!-- Banner de sesión de Operario -->
@@ -153,23 +161,30 @@
     <span>👤 Operador: <span id="nombreOperadorActivo">---</span></span>
     <button type="button" class="btn-cerrar-sesion" id="btnCerrarSesion">Cambiar</button>
   </div>
-  
-  <!-- Banner de información de Tarea Cargada -->
-  <div id="infoTarea" class="tarea-banner">
-    <div id="tareaTipoBadge" class="badge-tipo">ENTRADA</div>
-    <div><strong>Tarea asignada cargada:</strong></div>
-    <div id="tareaTexto"></div>
-  </div>
 
-  <!-- Formulario Principal (Bloqueado hasta pasar tarjeta) -->
+  <!-- Formulario Principal -->
   <form id="handheldForm">
     
-    <!-- Tareas pendientes disponibles -->
+    <!-- NUEVO: CAMPO PARA ESCANEAR QR DE LA ETIQUETA -->
+    <div class="qr-input-box">
+      <label for="scanQR">📱 Escanear QR de Etiqueta (ID Tarea)</label>
+      <input type="text" id="scanQR" placeholder="Pikee el código QR aquí..." autocomplete="off" disabled>
+      <div id="msgQRError" class="warning-msg">⚠ No se encontró ninguna tarea pendiente con ese ID.</div>
+    </div>
+
+    <!-- Tareas pendientes (Dropdown manual opcional o respaldo) -->
     <div class="form-group">
-      <label for="selectTarea">Tarea Pendiente (Opcional)</label>
+      <label for="selectTarea">O seleccionar Tarea Manualmente</label>
       <select id="selectTarea" disabled>
         <option value="">-- Operación Manual (Sin Tarea) --</option>
       </select>
+    </div>
+
+    <!-- Banner de información de Tarea Cargada -->
+    <div id="infoTarea" class="tarea-banner">
+      <div id="tareaTipoBadge" class="badge-tipo">ENTRADA</div>
+      <div><strong>Tarea Cargar por QR:</strong></div>
+      <div id="tareaTexto"></div>
     </div>
 
     <div class="form-group">
@@ -194,11 +209,11 @@
     <div class="grid-2">
       <div class="form-group">
         <label for="rack">Calle / Rack</label>
-        <input type="text" id="rack" placeholder="Ingresar Rack real" required disabled>
+        <input type="text" id="rack" placeholder="Escanear Rack real" required disabled>
       </div>
       <div class="form-group">
         <label for="box">Posición / Box</label>
-        <input type="text" id="box" placeholder="Ingresar Box real" required disabled>
+        <input type="text" id="box" placeholder="Escanear Box real" required disabled>
       </div>
     </div>
 
@@ -211,14 +226,13 @@
 <script>
   const URL_API = "https://script.google.com/macros/s/AKfycbyZlEck5rqAxp1c_oYmB0hqzyeOP3ozWRkbn0-4Aa-mnFE8YAfqlm4JEYdaV7roNHAMXQ/exec";
 
-  // Almacenes de memoria temporal
   let LISTA_OPERADORES = [];
   let LISTA_MATERIALES = [];
   let LISTA_TAREAS = [];
   let idTareaSeleccionada = null;
   let operadorLogueado = null; 
 
-  // Elementos del DOM
+  // Elementos DOM
   const form = document.getElementById('handheldForm');
   const inputTarjeta = document.getElementById('tarjetaOperador');
   const seccionEscaneoTarjeta = document.getElementById('seccionEscaneoTarjeta');
@@ -227,7 +241,10 @@
   const btnCerrarSesion = document.getElementById('btnCerrarSesion');
   const msgTarjetaError = document.getElementById('msgTarjetaError');
 
+  const inputScanQR = document.getElementById('scanQR');
+  const msgQRError = document.getElementById('msgQRError');
   const selectTarea = document.getElementById('selectTarea');
+  
   const inputMP = document.getElementById('materiaprima');
   const inputCantidad = document.getElementById('cantidad');
   const selectMovimiento = document.getElementById('movimiento');
@@ -241,7 +258,6 @@
   const tareaTexto = document.getElementById('tareaTexto');
   const tareaTipoBadge = document.getElementById('tareaTipoBadge');
 
-  // Inicializar maestros desde Google Sheets
   async function inicializarMaestros() {
     try {
       const respuesta = await fetch(URL_API + "?cargarMaestros=true");
@@ -251,7 +267,6 @@
       LISTA_MATERIALES = datos.materiales || [];
       LISTA_TAREAS = datos.tareas || [];
 
-      // Cargar Tareas en el selector
       selectTarea.innerHTML = '<option value="">-- Operación Manual (Sin Tarea) --</option>';
       LISTA_TAREAS.forEach(t => {
         const opt = document.createElement('option');
@@ -270,7 +285,6 @@
     inputTarjeta.focus();
   });
 
-  // Escuchar escaneo de tarjeta
   inputTarjeta.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -295,6 +309,9 @@
       
       alternarFormulario(true);
       emitirBeep(true);
+      
+      // Pasar foco directamente al escáner de QR
+      inputScanQR.focus();
     } else {
       msgTarjetaError.classList.add('show');
       inputTarjeta.value = "";
@@ -303,7 +320,6 @@
     }
   }
 
-  // Cerrar sesión
   btnCerrarSesion.addEventListener('click', () => {
     operadorLogueado = null;
     panelOperarioActivo.style.display = 'none';
@@ -315,15 +331,16 @@
     setTimeout(() => { inputTarjeta.focus(); }, 150);
   });
 
-  // Habilitar / Deshabilitar inputs
   function alternarFormulario(habilitar) {
-    const elementos = [selectTarea, inputMP, inputCantidad, selectMovimiento, inputRack, inputBox, btnRegistrar];
+    const elementos = [inputScanQR, selectTarea, inputMP, inputCantidad, selectMovimiento, inputRack, inputBox, btnRegistrar];
     elementos.forEach(el => el.disabled = !habilitar);
   }
 
   function limpiarFormulario() {
     idTareaSeleccionada = null;
     infoTarea.style.display = 'none';
+    msgQRError.classList.remove('show');
+    inputScanQR.value = "";
     inputMP.value = "";
     inputMP.className = "";
     msgMP.classList.remove('show');
@@ -336,7 +353,31 @@
     selectTarea.value = "";
   }
 
-  // Escuchar cambio en selección de tareas
+  // LÓGICA DE ESCANEO DE CÓDIGO QR
+  inputScanQR.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const qrLeido = inputScanQR.value.trim();
+      
+      if (!qrLeido) return;
+
+      // Buscar si el ID existe en las tareas cargadas
+      const tareaEncontrada = LISTA_TAREAS.find(t => t.id.toUpperCase() === qrLeido.toUpperCase());
+
+      if (tareaEncontrada) {
+        msgQRError.classList.remove('show');
+        selectTarea.value = tareaEncontrada.id; // Asigna al dropdown
+        cargarTareaEnFormulario(tareaEncontrada); // Carga la tarea
+        emitirBeep(true);
+      } else {
+        msgQRError.classList.add('show');
+        emitirBeep(false);
+        inputScanQR.select();
+      }
+    }
+  });
+
+  // Escuchar cambio manual en el selector
   selectTarea.addEventListener('change', () => {
     const tareaId = selectTarea.value;
     if (!tareaId) {
@@ -346,55 +387,55 @@
       selectMovimiento.disabled = false;
       inputRack.disabled = false;
       inputBox.disabled = false;
+      inputScanQR.focus();
       return;
     }
 
     const t = LISTA_TAREAS.find(item => item.id === tareaId);
     if (t) {
-      idTareaSeleccionada = t.id;
-      infoTarea.style.display = 'block';
-      
-      if (t.tipo === "SALIDA") {
-        tareaTipoBadge.textContent = "SALIDA";
-        tareaTipoBadge.className = "badge-tipo badge-salida";
-        
-        // Banner informativo con el muelle de destino a entregar enviado por Oficina
-        tareaTexto.innerHTML = `ID: <b>${t.id}</b><br>MP: ${t.codigo} - ${t.desc}<br>Cant Pedida: <b>${t.cant}</b><br>🚚 <b>Muelle/Lugar de Entrega:</b> ${t.rack} - ${t.box}`;
-
-        // Habilita edición de cantidad
-        inputCantidad.value = t.cant;
-        inputCantidad.disabled = false;
-      } else {
-        tareaTipoBadge.textContent = "ENTRADA";
-        tareaTipoBadge.className = "badge-tipo badge-entrada";
-        
-        // Banner informativo con el Muelle de retiro asignado por Oficina
-        tareaTexto.innerHTML = `ID: <b>${t.id}</b><br>MP: ${t.codigo} - ${t.desc}<br>Cant: <b>${t.cant}</b><br>📦 <b>Muelle/Lugar de Retiro:</b> ${t.rack} - ${t.box}`;
-
-        // Mantiene cantidad fija para ingresos
-        inputCantidad.value = t.cant;
-        inputCantidad.disabled = true;
-      }
-
-      // AMBOS CASOS (ENTRADA Y SALIDA): Los campos de ubicación se dejan VACÍOS y HABILITADOS
-      inputRack.value = "";
-      inputRack.disabled = false;
-      inputBox.value = "";
-      inputBox.disabled = false;
-
-      // Código de MP y Tipo de Movimiento protegidos
-      inputMP.value = t.codigo;
-      inputMP.disabled = true;
-      inputMP.className = "";
-      msgMP.classList.remove('show');
-
-      selectMovimiento.value = t.tipo === "SALIDA" ? "SALIDA" : "ENTRADA";
-      selectMovimiento.disabled = true;
-
-      // El cursor va directamente a Calle/Rack para escanear/ingresar la ubicación real
-      inputRack.focus();
+      inputScanQR.value = t.id;
+      cargarTareaEnFormulario(t);
     }
   });
+
+  // Función unificada para rellenar la tarea elegida (vía QR o Manual)
+  function cargarTareaEnFormulario(t) {
+    idTareaSeleccionada = t.id;
+    infoTarea.style.display = 'block';
+    
+    if (t.tipo === "SALIDA") {
+      tareaTipoBadge.textContent = "SALIDA";
+      tareaTipoBadge.className = "badge-tipo badge-salida";
+      tareaTexto.innerHTML = `ID: <b>${t.id}</b><br>MP: ${t.codigo} - ${t.desc}<br>Cant Pedida: <b>${t.cant}</b><br>🚚 <b>Muelle/Lugar de Entrega:</b> ${t.rack} - ${t.box}`;
+
+      inputCantidad.value = t.cant;
+      inputCantidad.disabled = false;
+    } else {
+      tareaTipoBadge.textContent = "ENTRADA";
+      tareaTipoBadge.className = "badge-tipo badge-entrada";
+      tareaTexto.innerHTML = `ID: <b>${t.id}</b><br>MP: ${t.codigo} - ${t.desc}<br>Cant: <b>${t.cant}</b><br>📦 <b>Muelle/Lugar de Retiro:</b> ${t.rack} - ${t.box}`;
+
+      inputCantidad.value = t.cant;
+      inputCantidad.disabled = true;
+    }
+
+    // Ubicaciones vacías y listas para escaneo del rack físico
+    inputRack.value = "";
+    inputRack.disabled = false;
+    inputBox.value = "";
+    inputBox.disabled = false;
+
+    inputMP.value = t.codigo;
+    inputMP.disabled = true;
+    inputMP.className = "";
+    msgMP.classList.remove('show');
+
+    selectMovimiento.value = t.tipo === "SALIDA" ? "SALIDA" : "ENTRADA";
+    selectMovimiento.disabled = true;
+
+    // Foco directo al Rack para escanear ubicación de la estantería
+    inputRack.focus();
+  }
 
   // Validar Código de Material si es manual
   inputMP.addEventListener('input', () => {
@@ -457,6 +498,7 @@
       inputBox.disabled = false;
       
       await inicializarMaestros();
+      inputScanQR.focus(); // Deja el foco listo para el próximo QR
 
     } catch (err) {
       statusBox.textContent = "❌ Error de conexión al guardar.";
@@ -467,7 +509,6 @@
     }
   });
 
-  // Alertas sonoras
   function emitirBeep(exito) {
     try {
       const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
