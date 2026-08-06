@@ -222,15 +222,21 @@
     th { background-color: #f1f3f5; color: var(--primary); position: sticky; top: 0; z-index: 10; }
     tr:hover { background-color: #f8f9fa; }
     
+    /* ESTILOS PARA FILAS IMPRESAS */
+    tr.fila-impresa { background-color: #e8f8f5; }
+    tr.fila-impresa:hover { background-color: #d1f2eb; }
+    
     .acciones-celda { display: flex; gap: 8px; }
     .btn-eliminar { background-color: var(--error); color: white; padding: 5px 8px; font-size: 11px; border: none; border-radius: 4px; cursor: pointer; margin-top: 0; width: auto; font-weight: bold; }
     .btn-eliminar:hover { background-color: #c62828; }
     
     .btn-imprimir { background-color: var(--print-btn); color: white; padding: 5px 8px; font-size: 11px; border: none; border-radius: 4px; cursor: pointer; margin-top: 0; width: auto; font-weight: bold; }
     .btn-imprimir:hover { background-color: #1d3557; }
+    .btn-imprimir.btn-reimprimir { background-color: #27ae60; }
 
     .badge-pendiente-entrada { background: #fff3cd; color: #856404; padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; border: 1px solid #ffeeba; }
     .badge-pendiente-salida { background: #e2f0fd; color: #185a9d; padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; border: 1px solid #b8daff; }
+    .badge-impreso { background: #d4edda; color: #155724; padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; border: 1px solid #c3e6cb; margin-left: 4px; }
 
     .chart-container {
       position: relative;
@@ -358,6 +364,19 @@
   let LISTA_USUARIOS = [];
   let miGrafico = null; 
 
+  // REGISTRO DE TAREAS IMPRESAS EN LOCALSTORAGE
+  function obtenerImpresos() {
+    return JSON.parse(localStorage.getItem('oficina_tareas_impresas') || '[]');
+  }
+
+  function marcarComoImpreso(idTarea) {
+    const impresos = obtenerImpresos();
+    if (!impresos.includes(idTarea)) {
+      impresos.push(idTarea);
+      localStorage.setItem('oficina_tareas_impresas', JSON.stringify(impresos));
+    }
+  }
+
   const loginOverlay = document.getElementById('loginOverlay');
   const userBadge = document.getElementById('userBadge');
   const loggedUserName = document.getElementById('loggedUserName');
@@ -455,13 +474,25 @@
       return;
     }
 
+    const impresos = obtenerImpresos();
     cuerpoTablaTareas.innerHTML = "";
+
     LISTA_TAREAS_ACTIVAS.forEach(tarea => {
       const tr = document.createElement('tr');
+      const yaImpreso = impresos.includes(tarea.id);
+
+      if (yaImpreso) {
+        tr.classList.add('fila-impresa');
+      }
+
       const descSanitizada = tarea.desc.replace(/'/g, "&#39;").replace(/"/g, "&quot;");
-      const tipoLabel = tarea.tipo === "SALIDA" 
+      let tipoLabel = tarea.tipo === "SALIDA" 
         ? '<span class="badge-pendiente-salida">📤 SALIDA</span>' 
         : '<span class="badge-pendiente-entrada">📥 ENTRADA</span>';
+
+      if (yaImpreso) {
+        tipoLabel += ' <span class="badge-impreso">🖨️ IMPRESO</span>';
+      }
 
       tr.innerHTML = `
         <td><small>${tarea.id}</small></td>
@@ -471,7 +502,9 @@
         <td>${tarea.cant}</td>
         <td><small>${tarea.rack} - ${tarea.box}</small></td>
         <td class="acciones-celda">
-          <button class="btn-imprimir" onclick="imprimirEtiqueta('${tarea.id}', '${tarea.codigo}', '${descSanitizada}', '${tarea.cant}', '${tarea.tipo}')">🖨️ Etiqueta</button>
+          <button class="btn-imprimir ${yaImpreso ? 'btn-reimprimir' : ''}" onclick="imprimirEtiqueta('${tarea.id}', '${tarea.codigo}', '${descSanitizada}', '${tarea.cant}', '${tarea.tipo}')">
+            ${yaImpreso ? '🔄 Reimprimir' : '🖨️ Etiqueta'}
+          </button>
           <button class="btn-eliminar" onclick="eliminarTarea('${tarea.id}')">❌</button>
         </td>
       `;
@@ -479,8 +512,12 @@
     });
   }
 
-// IMPRESIÓN DE ETIQUETA (100mm x 100mm) - QR solo con ID + Información visual completa
+  // IMPRESIÓN DE ETIQUETA Y ACTUALIZACIÓN EN TIEMPO REAL
   function imprimirEtiqueta(id, codigo, desc, cantidad, tipo) {
+    // Marcamos la tarea como impresa localmente
+    marcarComoImpreso(id);
+    renderizarTablaTareas();
+
     const ventanaImpresion = window.open('', '_blank', 'width=450,height=450');
     const tipoTitulo = tipo === "SALIDA" ? "PEDIDO DE SALIDA" : "PEDIDO DE ENTRADA";
 
@@ -526,7 +563,6 @@
             letter-spacing: 0.5px;
           }
 
-          /* Sección Central: QR solo con ID Tarea */
           .qr-section {
             display: flex;
             flex-direction: column;
@@ -552,7 +588,6 @@
             margin: 0 auto;
           }
 
-          /* Datos visibles en texto plano */
           .info-data-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -572,7 +607,6 @@
             text-overflow: ellipsis;
           }
 
-          /* Campos para completar a mano */
           .manual-fields {
             border-top: 1px dashed #000;
             padding-top: 2mm;
@@ -598,7 +632,6 @@
           
           <div class="header-tipo">${tipoTitulo}</div>
 
-          <!-- DATOS VISIBLES PARA EL OPERARIO -->
           <div class="info-data-grid">
             <div class="info-item">
               <strong>ID Tarea</strong>
@@ -614,13 +647,11 @@
             </div>
           </div>
 
-          <!-- CÓDIGO QR SOLO CON EL ID DE TAREA -->
           <div class="qr-section">
             <div class="qr-title">ESCANEAR TAREA CON HANDHELD</div>
             <div id="qrcode"></div>
           </div>
 
-          <!-- CAMPOS MANUALES -->
           <div class="manual-fields">
             <div class="grid-2-manual">
               <div class="manual-row">
@@ -641,7 +672,6 @@
         </div>
 
         <script>
-          // QR generado EXCLUSIVAMENTE con el ID de la tarea
           new QRCode(document.getElementById("qrcode"), {
             text: "${id}",
             width: 140,
@@ -663,7 +693,6 @@
     `);
     ventanaImpresion.document.close();
   }
-
 
   async function cargarDatosGenerales() {
     try {
