@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oficina - Asignación de Ingresos/Egresos</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <!-- LIBRERÍA PARA GENERAR CÓDIGO QR -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root { 
+      --primary: #1d3557; 
+      --success: #2a9d8f; 
+      --error: #e63946; 
+      --print-btn: #457b9d;
+      --bg: #f1faee; 
+    }
+    
+    body { 
+      font-family: system-ui, sans-serif; 
+      background: var(--bg); 
+      margin: 0; 
+      padding: 15px; 
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh; 
+      box-sizing: border-box;
+      overflow: hidden; 
+    }
+
+    /* PANTALLA DE BLOQUEO / ACCESO POR TARJETA */
+    .login-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(29, 53, 87, 0.95);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .login-card {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+    }
+
+    .login-card h2 {
+      margin-bottom: 10px;
+      border: none;
+    }
+
+    .login-card p {
+      color: #555;
+      font-size: 14px;
+      margin-bottom: 25px;
+    }
+
+    .login-card input {
+      font-size: 18px;
+      text-align: center;
+      letter-spacing: 2px;
+      margin-bottom: 15px;
+    }
+
+    .user-badge {
+      background: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-sizing: border-box;
+      width: 100%;
+      gap: 15px;
+    }
+
+    .user-badge-info {
+      display: flex;
+      align-items: center;
+      gap: 12px; 
+      font-size: 15px;
+      color: #555;
+      min-width: 0;
+    }
+
+    .user-badge-info span:first-child {
+      font-size: 18px; 
+    }
+
+    #loggedUserName {
+      font-size: 16px; 
+      font-weight: 800; 
+      color: var(--primary);
+      white-space: nowrap; 
+    }
+
+    .btn-logout {
+      background: transparent;
+      color: #888;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 6px 12px; 
+      font-size: 9px;   
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      width: auto !important; 
+      flex-shrink: 0;         
+      margin-top: 0 !important;
+    }
+    .btn-logout:hover {
+      background-color: var(--error);
+      color: white;
+      border-color: var(--error);
+    }
+
+    .dashboard-container {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: stretch;
+      gap: 20px; 
+      width: 100%;
+      max-width: 1400px;
+      margin-top: 5px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .card-left {
+      display: flex;
+      flex-direction: column;
+      gap: 12px; 
+      width: 100%; 
+      max-width: 420px; 
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .card { 
+      background: white; 
+      padding: 15px 20px; 
+      border-radius: 8px; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+      box-sizing: border-box; 
+    }
+
+    .card-tabla { 
+      flex-grow: 1; 
+      width: 100%; 
+      max-width: 950px; 
+      background: white; 
+      padding: 20px; 
+      border-radius: 8px; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+      box-sizing: border-box; 
+      display: flex;
+      flex-direction: column;
+      max-height: 100%;
+      min-height: 0;
+    }
+
+    .tabla-container {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+      margin-top: 10px;
+      border: 1px solid #eee;
+      border-radius: 4px;
+    }
+
+    h2 { 
+      color: var(--primary); 
+      margin-top: 0; 
+      margin-bottom: 10px;
+      font-size: 18px; 
+      text-align: center; 
+      border-bottom: 2px solid #e63946; 
+      padding-bottom: 6px;
+    }
+
+    .form-group { margin-bottom: 8px; } 
+    label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: var(--primary); } 
+    input, select { width: 100%; padding: 7px 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 12.5px; } 
+    select:disabled { background-color: #e9ecef; color: #495057; cursor: not-allowed; }
+    
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    
+    button { width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+    button:hover { background: #457b9d; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    
+    .status { 
+      text-align: center; 
+      padding: 6px; 
+      margin-top: 8px; 
+      border-radius: 4px; 
+      display: none; 
+      font-weight: bold; 
+      font-size: 12px; 
+    }
+    .success { display: block; background: #e8f5e9; color: #2e7d32; }
+    .error { display: block; background: #ffebee; color: #c62828; }
+    
+    .loading-banner { background: #fff3cd; color: #856404; text-align: center; padding: 8px; border-radius: 4px; font-size: 12px; font-weight: bold; width: 100%; max-width: 1360px; box-sizing: border-box; margin-bottom: 8px; }
+    
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #f1f3f5; color: var(--primary); position: sticky; top: 0; z-index: 10; }
+    tr:hover { background-color: #f8f9fa; }
+    
+    /* ESTILOS PARA FILAS IMPRESAS */
+    tr.fila-impresa { background-color: #e8f8f5; }
+    tr.fila-impresa:hover { background-color: #d1f2eb; }
+    
+    .acciones-celda { display: flex; gap: 8px; }
+    .btn-eliminar { background-color: var(--error); color: white; padding: 5px 8px; font-size: 11px; border: none; border-radius: 4px; cursor: pointer; margin-top: 0; width: auto; font-weight: bold; }
+    .btn-eliminar:hover { background-color: #c62828; }
+    
+    .btn-imprimir { background-color: var(--print-btn); color: white; padding: 5px 8px; font-size: 11px; border: none; border-radius: 4px; cursor: pointer; margin-top: 0; width: auto; font-weight: bold; }
+    .btn-imprimir:hover { background-color: #1d3557; }
+    .btn-imprimir.btn-reimprimir { background-color: #27ae60; }
+
+    .badge-pendiente-entrada { background: #fff3cd; color: #856404; padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; border: 1px solid #ffeeba; }
+    .badge-pendiente-salida { background: #e2f0fd; color: #185a9d; padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; border: 1px solid #b8daff; }
+    .badge-impreso { background: #d4edda; color: #155724; padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; border: 1px solid #c3e6cb; margin-left: 4px; }
+
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 165px; 
+    }
+
+    @media (max-width: 1024px) {
+      body { height: auto; overflow: auto; }
+      .dashboard-container { flex-direction: column; align-items: center; }
+      .card-left, .card-tabla { max-width: 100%; }
+      .card-left { overflow: visible; }
+      .card-tabla { max-height: none; }
+      .tabla-container { max-height: 400px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-card">
+    <h2>Acceso Autorizado</h2>
+    <p>Por favor, pase su tarjeta o ingrese su Legajo</p>
+    <input type="password" id="inputTarjeta" placeholder="••••••••" autofocus autocomplete="off">
+    <div id="loginStatus" style="color: var(--error); font-weight: bold; font-size: 14px; margin-top: 5px;"></div>
+  </div>
+</div>
+
+<div id="loadingBanner" class="loading-banner">🔄 Sincronizando catálogos de materiales, ubicaciones y métricas...</div>
+
+<div class="dashboard-container">
+
+  <div class="card-left">
+    
+    <div class="card">
+      <h2>Asignar Tarea</h2>
+      <form id="oficinaForm">
+        <div class="form-group">
+          <label for="tipoTarea">Tipo de Operación</label>
+          <select id="tipoTarea" required disabled>
+            <option value="ENTRADA">📥 ENTRADA PROVEEDORES (Ingreso a Stock)</option>
+            <option value="SALIDA">📤 PEDIDO DE LINEAS (Despacho / Retiro)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="materiaprima">Seleccionar Materia Prima</label>
+          <select id="materiaprima" required disabled>
+            <option value="">-- Elija un material --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="cantidad">Cantidad de Operación</label>
+          <input type="number" id="cantidad" min="1" value="1" required disabled>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="rack">Calle / Rack</label>
+            <select id="rack" required disabled>
+              <option value="">-- Calle --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="box">Posición / Box</label>
+            <select id="box" required disabled>
+              <option value="">-- Box --</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" id="btnAsignar" disabled>ASIGNAR TAREA</button>
+      </form>
+      <div id="statusBox" class="status"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="border-bottom: 2px solid var(--print-btn); margin-bottom: 5px;">Estado General del Día</h2>
+      <div class="chart-container">
+        <canvas id="graficoEstados"></canvas>
+      </div>
+    </div>
+
+    <div id="userBadge" class="user-badge" style="display: none;">
+      <div class="user-badge-info">
+        <span>👤</span>
+        <span id="loggedUserName">Iniciando...</span>
+      </div>
+      <button class="btn-logout" onclick="logout()">Cerrar</button>
+    </div>
+
+  </div>
+
+  <div class="card-tabla">
+    <h2>Tareas Pendientes en Planta</h2>
+    <div class="tabla-container">
+      <table>
+        <thead>
+          <tr>
+            <th>ID Tarea</th>
+            <th>Tipo</th>
+            <th>Código MP</th>
+            <th>Descripción</th>
+            <th>Cant.</th>
+            <th>Ubicación</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpoTablaTareas">
+          <tr><td colspan="7" style="text-align: center; color: #666;">Cargando tareas activas...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const URL_API = "https://script.google.com/macros/s/AKfycbyZlEck5rqAxp1c_oYmB0hqzyeOP3ozWRkbn0-4Aa-mnFE8YAfqlm4JEYdaV7roNHAMXQ/exec";
+
+  let LISTA_MATERIALES = [];
+  let LISTA_UBICACIONES = [];
+  let LISTA_TAREAS_ACTIVAS = [];
+  let LISTA_USUARIOS = [];
+  let miGrafico = null; 
+
+  // REGISTRO DE TAREAS IMPRESAS EN LOCALSTORAGE
+  function obtenerImpresos() {
+    return JSON.parse(localStorage.getItem('oficina_tareas_impresas') || '[]');
+  }
+
+  function marcarComoImpreso(idTarea) {
+    const impresos = obtenerImpresos();
+    if (!impresos.includes(idTarea)) {
+      impresos.push(idTarea);
+      localStorage.setItem('oficina_tareas_impresas', JSON.stringify(impresos));
+    }
+  }
+
+  const loginOverlay = document.getElementById('loginOverlay');
+  const userBadge = document.getElementById('userBadge');
+  const loggedUserName = document.getElementById('loggedUserName');
+  const inputTarjeta = document.getElementById('inputTarjeta');
+  const loginStatus = document.getElementById('loginStatus');
+
+  const selectTipo = document.getElementById('tipoTarea');
+  const selectMP = document.getElementById('materiaprima');
+  const selectRack = document.getElementById('rack');
+  const selectBox = document.getElementById('box');
+  const loadingBanner = document.getElementById('loadingBanner');
+  const statusBox = document.getElementById('statusBox');
+  const btnAsignar = document.getElementById('btnAsignar');
+  const cuerpoTablaTareas = document.getElementById('cuerpoTablaTareas');
+
+  inputTarjeta.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      procesarLogin();
+    }
+  });
+
+  function procesarLogin() {
+    const rawLegajo = inputTarjeta.value.trim().split('.')[0];
+    if (!rawLegajo) return;
+
+    const usuarioEncontrado = LISTA_USUARIOS.find(u => u.legajo === rawLegajo);
+
+    if (usuarioEncontrado) {
+      sessionStorage.setItem('oficina_legajo', usuarioEncontrado.legajo);
+      sessionStorage.setItem('oficina_nombre', usuarioEncontrado.nombre);
+      mostrarInterfazLogueada(usuarioEncontrado.nombre);
+    } else {
+      loginStatus.textContent = "Acceso Denegado. Tarjeta o Legajo no registrado.";
+      inputTarjeta.value = "";
+      inputTarjeta.focus();
+    }
+  }
+
+  function mostrarInterfazLogueada(nombre) {
+    loginOverlay.style.display = 'none';
+    userBadge.style.display = 'flex';
+    loggedUserName.textContent = nombre;
+  }
+
+  function logout() {
+    sessionStorage.removeItem('oficina_legajo');
+    sessionStorage.removeItem('oficina_nombre');
+    userBadge.style.display = 'none';
+    loginOverlay.style.display = 'flex';
+    inputTarjeta.value = "";
+    loginStatus.textContent = "";
+    setTimeout(() => inputTarjeta.focus(), 200);
+  }
+
+  function actualizarGrafico(pendientesEntrada, pendientesSalida, ingresados, eliminados) {
+    const ctx = document.getElementById('graficoEstados').getContext('2d');
+
+    if (miGrafico) {
+      miGrafico.data.datasets[0].data = [pendientesEntrada, pendientesSalida, ingresados, eliminados];
+      miGrafico.update();
+    } else {
+      miGrafico = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Pnd. Entrada', 'Pnd. Salida', 'Ingresados', 'Eliminados'],
+          datasets: [{
+            label: 'Tareas',
+            data: [pendientesEntrada, pendientesSalida, ingresados, eliminados],
+            backgroundColor: ['#fff3cd', '#e2f0fd', '#2a9d8f', '#e63946'],
+            borderColor: ['#856404', '#185a9d', '#1e7167', '#b52a35'],
+            borderWidth: 1.5,
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { stepSize: 1, precision: 0 }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  function renderizarTablaTareas() {
+    if (LISTA_TAREAS_ACTIVAS.length === 0) {
+      cuerpoTablaTareas.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #666;">No hay tareas pendientes en este momento.</td></tr>';
+      return;
+    }
+
+    const impresos = obtenerImpresos();
+    cuerpoTablaTareas.innerHTML = "";
+
+    LISTA_TAREAS_ACTIVAS.forEach(tarea => {
+      const tr = document.createElement('tr');
+      const yaImpreso = impresos.includes(tarea.id);
+
+      if (yaImpreso) {
+        tr.classList.add('fila-impresa');
+      }
+
+      const descSanitizada = tarea.desc.replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+      let tipoLabel = tarea.tipo === "SALIDA" 
+        ? '<span class="badge-pendiente-salida">📤 SALIDA</span>' 
+        : '<span class="badge-pendiente-entrada">📥 ENTRADA</span>';
+
+      if (yaImpreso) {
+        tipoLabel += ' <span class="badge-impreso">🖨️ IMPRESO</span>';
+      }
+
+      tr.innerHTML = `
+        <td><small>${tarea.id}</small></td>
+        <td>${tipoLabel}</td>
+        <td><strong>${tarea.codigo}</strong></td>
+        <td>${tarea.desc}</td>
+        <td>${tarea.cant}</td>
+        <td><small>${tarea.rack} - ${tarea.box}</small></td>
+        <td class="acciones-celda">
+          <button class="btn-imprimir ${yaImpreso ? 'btn-reimprimir' : ''}" onclick="imprimirEtiqueta('${tarea.id}', '${tarea.codigo}', '${descSanitizada}', '${tarea.cant}', '${tarea.tipo}')">
+            ${yaImpreso ? '🔄 Reimprimir' : '🖨️ Etiqueta'}
+          </button>
+          <button class="btn-eliminar" onclick="eliminarTarea('${tarea.id}')">❌</button>
+        </td>
+      `;
+      cuerpoTablaTareas.appendChild(tr);
+    });
+  }
+
+  // IMPRESIÓN DE ETIQUETA Y ACTUALIZACIÓN EN TIEMPO REAL
+  function imprimirEtiqueta(id, codigo, desc, cantidad, tipo) {
+    // Marcamos la tarea como impresa localmente
+    marcarComoImpreso(id);
+    renderizarTablaTareas();
+
+    const ventanaImpresion = window.open('', '_blank', 'width=450,height=450');
+    const tipoTitulo = tipo === "SALIDA" ? "PEDIDO DE SALIDA" : "PEDIDO DE ENTRADA";
+
+    ventanaImpresion.document.write(`
+      <html>
+      <head>
+        <title>Etiqueta ${id}</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
+        <style>
+          @page {
+            size: 100mm 100mm;
+            margin: 0;
+          }
+          * { box-sizing: border-box; }
+          body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 3mm; 
+            width: 100mm; 
+            height: 100mm; 
+            color: #000; 
+            background: #fff;
+            overflow: hidden;
+          }
+          .etiqueta-container {
+            width: 94mm;
+            height: 94mm;
+            border: 2px solid #000;
+            padding: 3mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+          }
+          .header-tipo {
+            background: #000;
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            padding: 4px 0;
+            border-radius: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .qr-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 2mm 0;
+            padding: 2mm;
+            border: 1px solid #000;
+            border-radius: 3px;
+            background: #fafafa;
+          }
+          .qr-title {
+            font-size: 8px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2mm;
+          }
+          #qrcode img {
+            width: 38mm !important;
+            height: 38mm !important;
+            display: block;
+            margin: 0 auto;
+          }
+
+          .info-data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2mm;
+            font-size: 10px;
+            background: #f1f1f1;
+            padding: 2mm;
+            border-radius: 3px;
+            border: 1px solid #ddd;
+          }
+          .info-item strong { display: block; font-size: 8px; color: #555; text-transform: uppercase; }
+          .info-item span { font-size: 11px; font-weight: bold; }
+          .full-width { grid-column: span 2; }
+          .desc-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          .manual-fields {
+            border-top: 1px dashed #000;
+            padding-top: 2mm;
+            display: flex;
+            flex-direction: column;
+            gap: 2mm;
+            font-size: 9px;
+            font-weight: bold;
+          }
+          .manual-row { display: flex; align-items: flex-end; width: 100%; }
+          .manual-label { white-space: nowrap; padding-right: 3px; }
+          .manual-line { flex: 1; border-bottom: 1px dashed #000; height: 10px; }
+          .grid-2-manual { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+
+          @media print { 
+            body { padding: 0; } 
+            .etiqueta-container { border: none; width: 100mm; height: 100mm; padding: 3mm; } 
+          }
+        </style>
+      </head>
+      <body>
+        <div class="etiqueta-container">
+          
+          <div class="header-tipo">${tipoTitulo}</div>
+
+          <div class="info-data-grid">
+            <div class="info-item">
+              <strong>ID Tarea</strong>
+              <span>${id}</span>
+            </div>
+            <div class="info-item">
+              <strong>Cód. MP / Cantidad</strong>
+              <span>${codigo} (${cantidad} u.)</span>
+            </div>
+            <div class="info-item full-width desc-text">
+              <strong>Descripción Material</strong>
+              <span>${desc}</span>
+            </div>
+          </div>
+
+          <div class="qr-section">
+            <div class="qr-title">ESCANEAR TAREA CON HANDHELD</div>
+            <div id="qrcode"></div>
+          </div>
+
+          <div class="manual-fields">
+            <div class="grid-2-manual">
+              <div class="manual-row">
+                <span class="manual-label">FECHA:</span>
+                <div class="manual-line"></div>
+              </div>
+              <div class="manual-row">
+                <span class="manual-label">TURNO:</span>
+                <div class="manual-line"></div>
+              </div>
+            </div>
+            <div class="manual-row">
+              <span class="manual-label">CANASTO / RACK:</span>
+              <div class="manual-line"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <script>
+          new QRCode(document.getElementById("qrcode"), {
+            text: "${id}",
+            width: 140,
+            height: 140,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.M
+          });
+
+          window.onload = function() { 
+            setTimeout(function() { 
+              window.print(); 
+              window.close(); 
+            }, 300); 
+          }
+        <\/script>
+      </body>
+      </html>
+    `);
+    ventanaImpresion.document.close();
+  }
+
+  async function cargarDatosGenerales() {
+    try {
+      const respuesta = await fetch(URL_API + "?cargarMaestros=true");
+      const datos = await respuesta.json();
+      
+      LISTA_USUARIOS = datos.usuarios || [];
+      LISTA_MATERIALES = datos.materiales || [];
+      LISTA_UBICACIONES = datos.ubicaciones || [];
+      LISTA_TAREAS_ACTIVAS = datos.tareas || [];
+
+      const userCachedLegajo = sessionStorage.getItem('oficina_legajo');
+      const userCachedNombre = sessionStorage.getItem('oficina_nombre');
+      if (userCachedLegajo && userCachedNombre) {
+        mostrarInterfazLogueada(userCachedNombre);
+      } else {
+        loginOverlay.style.display = 'flex';
+        inputTarjeta.focus();
+      }
+
+      selectMP.innerHTML = '<option value="">-- Elija un material --</option>';
+      
+      const materialesPorSector = LISTA_MATERIALES.reduce((acc, m) => {
+        const sec = (m.sector && m.sector.trim() !== "") ? m.sector.trim().toUpperCase() : "SIN SECTOR";
+        if (!acc[sec]) acc[sec] = [];
+        acc[sec].push(m);
+        return acc;
+      }, {});
+
+      const sectoresOrdenados = Object.keys(materialesPorSector).sort((a, b) => a.localeCompare(b));
+
+      sectoresOrdenados.forEach(sec => {
+        const group = document.createElement('optgroup');
+        group.label = `--- SECTOR: ${sec} ---`;
+
+        materialesPorSector[sec].sort((a, b) => a.desc.localeCompare(b.desc)).forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.codigo;
+          opt.textContent = `${m.desc} (${m.codigo})`;
+          group.appendChild(opt);
+        });
+
+        selectMP.appendChild(group);
+      });
+
+      selectRack.innerHTML = '<option value="">-- Calle --</option>';
+      const racksUnicos = [...new Set(LISTA_UBICACIONES.map(u => u.rack))].sort();
+      racksUnicos.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r; 
+        opt.textContent = r;
+        if (r === "MUELLE") {
+          opt.selected = true; 
+        }
+        selectRack.appendChild(opt);
+      });
+
+      renderizarTablaTareas();
+
+      const totalPndEntrada = datos.tareasPendientesEntradaCount || 0;
+      const totalPndSalida = datos.tareasPendientesSalidaCount || 0;
+      const totalIngresados = datos.tareasCompletadasCount || 0; 
+      const totalEliminados = datos.tareasEliminadasCount || 0;
+
+      actualizarGrafico(totalPndEntrada, totalPndSalida, totalIngresados, totalEliminados);
+
+      loadingBanner.style.display = 'none';
+      
+      document.querySelectorAll('#oficinaForm input, #oficinaForm select').forEach(el => {
+        if (el.id !== 'rack') {
+          el.disabled = false;
+        }
+      });
+      btnAsignar.disabled = false;
+
+      selectRack.dispatchEvent(new Event('change'));
+
+    } catch (err) {
+      loadingBanner.style.backgroundColor = '#f8d7da';
+      loadingBanner.style.color = '#721c24';
+      loadingBanner.textContent = '❌ Error de conexión con el servidor.';
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', cargarDatosGenerales);
+
+  selectRack.addEventListener('change', () => {
+    const rackSel = selectRack.value;
+    selectBox.innerHTML = '<option value="">-- Box --</option>';
+    if (rackSel) {
+      LISTA_UBICACIONES.filter(u => u.rack === rackSel).map(u => u.box).sort().forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b; opt.textContent = b;
+        selectBox.appendChild(opt);
+      });
+    }
+  });
+
+  document.getElementById('oficinaForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    btnAsignar.disabled = true;
+    statusBox.style.display = 'none';
+
+    const legajoSesion = sessionStorage.getItem('oficina_legajo') || "";
+
+    const payload = {
+      accion: "crearTareaPendiente",
+      tipo: selectTipo.value,
+      materiaprima: selectMP.value,
+      cantidad: document.getElementById('cantidad').value,
+      rack: selectRack.value, 
+      box: selectBox.value,
+      usuarioOficina: legajoSesion 
+    };
+
+    try {
+      await fetch(URL_API, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      statusBox.textContent = "✔ Tarea registrada exitosamente.";
+      statusBox.className = "status success";
+      document.getElementById('cantidad').value = "1";
+      selectMP.value = ""; 
+      
+      selectRack.value = "MUELLE"; 
+      selectRack.dispatchEvent(new Event('change'));
+      
+      await cargarDatosGenerales();
+    } catch (err) {
+      statusBox.textContent = "❌ Error al guardar tarea.";
+      statusBox.className = "status error";
+    } finally {
+      btnAsignar.disabled = false;
+    }
+  });
+
+  async function eliminarTarea(idTarea) {
+    if (!confirm(`¿Está seguro de que desea eliminar la tarea ${idTarea}?`)) return;
+
+    try {
+      await fetch(URL_API, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accion: "eliminarTarea",
+          idTarea: idTarea
+        })
+      });
+
+      await cargarDatosGenerales();
+      alert(`✔ Tarea ${idTarea} eliminada.`);
+    } catch (error) {
+      alert("❌ Error de red al intentar eliminar la tarea.");
+    }
+  }
+</script>
+</body>
+</html>
